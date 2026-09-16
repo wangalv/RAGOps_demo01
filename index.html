@@ -47,7 +47,9 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,
 .bwrap{flex:2 1 160px;display:flex;align-items:center;gap:5px;}
 .bbg{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
 .bbar{height:100%;border-radius:3px;width:0%;transition:width .7s ease;}
-.sc{font-size:11px;font-weight:700;min-width:36px;text-align:right;}
+.sc-wrap{display:flex;flex-direction:column;align-items:flex-end;min-width:52px;}
+.sc{font-size:11px;font-weight:700;}
+.sc-meta{font-size:9px;color:var(--muted);white-space:nowrap;margin-top:1px;}
 .bdgs{display:flex;gap:3px;flex-shrink:0;}
 .bg{font-size:9px;padding:1px 5px;border-radius:6px;color:#fff;white-space:nowrap;}
 .t-best{background:#22c55e;}.t-worse{background:#ef4444;}
@@ -243,9 +245,9 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,
 </div>
 
 <div class="leg">
-  <div class="li"><div class="ld llm-0"></div>No AI generation</div>
-  <div class="li"><div class="ld llm-1"></div>1× AI generation per query</div>
-  <div class="li"><div class="ld llm-2"></div>2× AI generation per query</div>
+  <div class="li"><div class="ld llm-0"></div>0 LLM calls</div>
+  <div class="li"><div class="ld llm-1"></div>1 LLM call per query</div>
+  <div class="li"><div class="ld llm-2"></div>2 LLM calls per query</div>
 </div>
 
 <div class="ics">
@@ -275,7 +277,7 @@ const methods = [
 // ── Phase 1 ──────────────────────────────────────────────────────────────────
 {
   id:'hyde-r3', phase:'p1', name:'HyDE → Reranked@3', score:.881, color:'#3b82f6',
-  tag:'base', tagLbl:'Best@21', llm:1, hl:false,
+  tag:'base', tagLbl:'Best@21', llm:1, hl:false, topK:3, precision:.294, precisionEst:true,
   steps:[
     {n:1, title:'Simulate what the answer looks like',
      body:'An AI model reads your question and writes a short hypothetical answer — as if it were already in the Act. For example, for "How long is a board member\'s term?", it might generate a clause like "A board member holds office for a period of 3 years."'},
@@ -294,7 +296,7 @@ const methods = [
 
 {
   id:'dense-r3', phase:'p1', name:'Dense Search → Reranked@3', score:.870, color:'#3b82f6',
-  tag:null, llm:0, hl:false,
+  tag:null, llm:0, hl:false, topK:3, precision:.290, precisionEst:true,
   steps:[
     {n:1, title:'Convert the question into a meaning vector',
      body:'The question is encoded into a vector — a compact numerical representation that captures its meaning. No AI generation is involved; this is a fast mathematical operation.'},
@@ -313,7 +315,7 @@ const methods = [
 
 {
   id:'stepback-r3', phase:'p1', name:'Step-Back → Reranked@3', score:.870, color:'#3b82f6',
-  tag:null, llm:1, hl:false,
+  tag:null, llm:1, hl:false, topK:3, precision:.290, precisionEst:true,
   steps:[
     {n:1, title:'Abstract the question to a broader topic',
      body:'An AI model takes the specific question (e.g. "What is the penalty if a nurse fails to report?") and rephrases it as a broader legal topic (e.g. "mandatory reporting obligations and consequences for health practitioners").'},
@@ -330,7 +332,7 @@ const methods = [
 // ── Phase 2 ──────────────────────────────────────────────────────────────────
 {
   id:'hyde-r5', phase:'p2', name:'HyDE → Reranked@5', score:.750, color:'#f97316',
-  tag:'base', tagLbl:'True baseline', llm:1, hl:false,
+  tag:'base', tagLbl:'True baseline', llm:1, hl:false, topK:5, precision:.150, precisionEst:true,
   steps:[
     {n:1, title:'Same pipeline as Phase 1',
      body:'Identical to HyDE→Reranked@3 — simulate a hypothetical answer, search with it, re-rank with a cross-encoder. The only difference: return the top 5 instead of top 3.'},
@@ -344,7 +346,7 @@ const methods = [
 
 {
   id:'dense-r5', phase:'p2', name:'Dense Search → Reranked@5', score:.732, color:'#f97316',
-  tag:null, llm:0, hl:false,
+  tag:null, llm:0, hl:false, topK:5, precision:.146, precisionEst:true,
   steps:[
     {n:1, title:'Same pipeline as Phase 1, larger eval set',
      body:'Standard vector search on the question, cross-encoder re-ranking, returning top 5. Evaluated on the full 79 grounded queries.'},
@@ -356,7 +358,7 @@ const methods = [
 
 {
   id:'routing', phase:'p2', name:'Query Routing', score:.720, color:'#f97316',
-  tag:null, llm:1, hl:false,
+  tag:null, llm:1, hl:false, topK:5, precision:.144, precisionEst:true,
   steps:[
     {n:1, title:'Classify the type of question',
      body:'An AI model reads the question and assigns it to one of four categories: Penalty (asks about fines or offences), Prohibition (asks what is not allowed), Cross-Section (requires multiple parts of the Act), or General. Classification was 100% accurate across all 79 queries.'},
@@ -375,7 +377,7 @@ const methods = [
 
 {
   id:'lqe', phase:'p2', name:'Legal Query Expansion', score:.710, color:'#f97316',
-  tag:null, llm:1, hl:false,
+  tag:null, llm:1, hl:false, topK:5, precision:.142, precisionEst:true,
   steps:[
     {n:1, title:'Rewrite the question using legal vocabulary',
      body:'An AI model translates the user\'s plain-English question into legal phrasing from the Act. For example: "What is the fine for not reporting?" becomes "What is the maximum penalty in penalty units for failure to comply with mandatory reporting obligations?"'},
@@ -394,7 +396,7 @@ const methods = [
 
 {
   id:'legalhyde', phase:'p2', name:'Legal HyDE v2', score:.451, color:'#ef4444',
-  tag:'worse', tagLbl:'Worst result', llm:1, hl:false,
+  tag:'worse', tagLbl:'Worst result', llm:1, hl:false, topK:5, precision:.090, precisionEst:true,
   steps:[
     {n:1, title:'Force the simulated answer to use Act vocabulary',
      body:'A modified prompt instructs the AI to generate a hypothetical answer that must use exact NSW Act phrasing — terms like "penalty units", "governing board", "authorised officer", etc.'},
@@ -412,7 +414,7 @@ const methods = [
 // ── Phase 3 ──────────────────────────────────────────────────────────────────
 {
   id:'subsecpc', phase:'p3', name:'Subsection-level Search → Reranked@5', score:.750, color:'#a855f7',
-  tag:null, llm:0, hl:false,
+  tag:null, llm:0, hl:false, topK:5, precision:.150, precisionEst:true,
   steps:[
     {n:1, title:'Chop the Act into smaller pieces',
      body:'Instead of treating each section (e.g. Section 17) as one search unit, the Act is split into individual numbered clauses — each subsection like "(1)", "(2)", "(3)" becomes its own searchable chunk. This gives 1,169 finer pieces compared to the original 552 sections.'},
@@ -433,7 +435,7 @@ const methods = [
 
 {
   id:'subsecrouted', phase:'p3', name:'Routed + Clause-level + Reranked@5', score:.753, color:'#a855f7',
-  tag:'break', tagLbl:'Breaks 0.75', llm:1, hl:false,
+  tag:'break', tagLbl:'Breaks 0.75', llm:1, hl:false, topK:5, precision:.151, precisionEst:true,
   steps:[
     {n:1, title:'Classify the question type',
      body:'An AI model decides which category the question falls into (Penalty, Prohibition, Cross-Section, or General). This determines which search strategy to use.'},
@@ -454,7 +456,7 @@ const methods = [
 
 {
   id:'bge-embed', phase:'p3', name:'Larger Embedding Model (BGE)', score:.741, color:'#a855f7',
-  tag:null, llm:1, hl:false,
+  tag:null, llm:1, hl:false, topK:5, precision:.148, precisionEst:true,
   steps:[
     {n:1, title:'Same routing and search pipeline',
      body:'Same question-type routing and transformed search as above. The only change: a larger AI embedding model (BGE-large, 1024 dimensions vs the standard 384 dimensions) is used to convert passages into vectors.'},
@@ -468,7 +470,7 @@ const methods = [
 
 {
   id:'cascade', phase:'p3', name:'Two-Stage Re-ranking (MiniLM → BGE)', score:.728, color:'#ef4444',
-  tag:'worse', tagLbl:'Worse', llm:1, hl:false,
+  tag:'worse', tagLbl:'Worse', llm:1, hl:false, topK:5, precision:.146, precisionEst:true,
   steps:[
     {n:1, title:'First stage: fast re-ranker narrows to top 10',
      body:'A fast re-ranking model (MiniLM, trained on English web search data) scores all retrieved passages and keeps only the top 10.'},
@@ -485,7 +487,7 @@ const methods = [
 
 {
   id:'bge-rnk', phase:'p3', name:'BGE Re-ranker Only', score:.709, color:'#ef4444',
-  tag:'worse', tagLbl:'Worst in Phase 3', llm:1, hl:false,
+  tag:'worse', tagLbl:'Worst in Phase 3', llm:1, hl:false, topK:5, precision:.142, precisionEst:true,
   steps:[
     {n:1, title:'Replace the re-ranker entirely with BGE',
      body:'The standard MiniLM re-ranker is swapped out entirely. BGE-reranker-large becomes the sole model that scores each retrieved passage against the question.'},
@@ -500,7 +502,7 @@ const methods = [
 
 {
   id:'rnk10', phase:'p3', name:'Routed + Clause-level → Top 10 returned', score:.797, color:'#22c55e',
-  tag:'best', tagLbl:'@10 pool', llm:1, hl:false,
+  tag:'best', tagLbl:'@10 pool', llm:1, hl:false, topK:10, precision:.080, precisionEst:true,
   steps:[
     {n:1, title:'Same full pipeline, but return 10 results instead of 5',
      body:'Identical to the Routed+Clause-level method. Only the final output size changes: the cross-encoder keeps the top 10 instead of top 5.'},
@@ -514,7 +516,7 @@ const methods = [
 
 {
   id:'rnk20', phase:'p3', name:'Routed + Clause-level → Top 20 returned', score:.878, color:'#22c55e',
-  tag:'best', tagLbl:'@20 pool', llm:1, hl:false,
+  tag:'best', tagLbl:'@20 pool', llm:1, hl:false, topK:20, precision:.044, precisionEst:true,
   steps:[
     {n:1, title:'Same pipeline, return 20 results',
      body:'The identical pipeline returns 20 results. Used only to understand how much recall is theoretically achievable with this retrieval approach.'},
@@ -527,7 +529,7 @@ const methods = [
 // ── Phase 4 ──────────────────────────────────────────────────────────────────
 {
   id:'llmrnk', phase:'p4', name:'Routed + Clause-level + AI Re-ranking@5', score:.802, color:'#22c55e',
-  tag:'new', tagLbl:'New best', llm:2, hl:true,
+  tag:'new', tagLbl:'New best', llm:2, hl:true, topK:5, precision:.203, precisionEst:false,
   steps:[
     {n:1, title:'Smart search with question-type routing',
      body:'Same as the best Phase 3 method: classify the question type, apply a tailored query transformation, search through fine-grained clause-level chunks, and expand results to full subsection clauses. A cross-encoder then scores all results and keeps the top 10.'},
@@ -551,7 +553,7 @@ const methods = [
 
 const MAX = 0.92;
 const llmC = ['llm-0','llm-1','llm-2'];
-const llmL = ['No AI generation','1× AI generation','2× AI generation'];
+const llmL = ['0 LLM calls','1 LLM call','2 LLM calls'];
 
 function stepsHtml(steps) {
   if (!steps || !steps.length) return '';
@@ -584,7 +586,10 @@ function rowHtml(d) {
       <div class="ename">${d.name}</div>
       <div class="bwrap">
         <div class="bbg"><div class="bbar" style="background:${d.color}" data-w="${pct}"></div></div>
-        <div class="sc" style="color:${scC}">${sc}</div>
+        <div class="sc-wrap">
+          <div class="sc" style="color:${scC}">${sc}</div>
+          <div class="sc-meta">K=${d.topK} · P${d.precisionEst?'≈':'='}${d.precision.toFixed(2)}</div>
+        </div>
       </div>
       <div class="bdgs"><span class="${llmC[d.llm]}">${llmL[d.llm]}</span>${resBadge}</div>
     </div>
