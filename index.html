@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAGOps — NSW Health Services Act Experiment Journey</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#f8f9fa;--card:#ffffff;--border:#e2e8f0;--text:#1a202c;--muted:#64748b;
+  --accent:#3b82f6;--green:#22c55e;--red:#ef4444;--orange:#f97316;--purple:#a855f7;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#0f172a;--card:#1e293b;--border:#334155;--text:#f1f5f9;--muted:#94a3b8;}
+}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;
+     padding:0 20px 40px;max-width:860px;margin:0 auto;}
+
+/* header */
+.site-header{padding:28px 0 20px;border-bottom:1px solid var(--border);margin-bottom:6px;}
+.site-header h1{font-size:20px;font-weight:800;letter-spacing:-.01em;}
+.site-header p{font-size:12px;color:var(--muted);margin-top:4px;}
+
+.hdr{margin:20px 0 6px;}
+.hdr-title{font-size:15px;font-weight:700;}
+.hdr-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* dataset flow */
+.flow{display:flex;align-items:center;flex-wrap:wrap;gap:0;margin:12px 0 14px;}
+.fn{background:var(--card);border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;min-width:80px;text-align:center;}
+.fn .num{font-size:18px;font-weight:800;}
+.fn .lbl{font-size:10px;color:var(--muted);line-height:1.35;margin-top:1px;}
+.fn-fil{border-color:#f97316;}
+.fn-keep{border-color:#22c55e;}
+.fa{font-size:14px;color:var(--muted);padding:0 5px;}
+.ftag{display:inline-block;font-size:9px;padding:1px 5px;border-radius:6px;color:#fff;margin-top:3px;}
+.bg-o{background:#f97316;}.bg-g{background:#22c55e;}.bg-b{background:#3b82f6;}
+
+.pt{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;
+    margin:14px 0 5px;padding-bottom:3px;border-bottom:1px solid var(--border);}
+
+/* experiment rows */
+.er-wrap{border:1px solid var(--border);border-radius:6px;margin-bottom:4px;overflow:hidden;}
+.er-wrap.open-wrap{border-color:var(--accent);}
+.er{background:var(--card);border:none;padding:6px 10px;display:flex;align-items:center;gap:6px;cursor:pointer;transition:background .15s;}
+.er:hover{background:color-mix(in srgb,var(--card) 94%,var(--accent) 6%);}
+.er.hl{background:color-mix(in srgb,var(--card) 94%,#22c55e 6%);}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.ename{font-size:11px;font-weight:600;flex:1 1 140px;}
+.bwrap{flex:2 1 160px;display:flex;align-items:center;gap:5px;}
+.bbg{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+.bbar{height:100%;border-radius:3px;width:0%;transition:width .7s ease;}
+.sc{font-size:11px;font-weight:700;min-width:36px;text-align:right;}
+.bdgs{display:flex;gap:3px;flex-shrink:0;}
+.bg{font-size:9px;padding:1px 5px;border-radius:6px;color:#fff;white-space:nowrap;}
+.t-best{background:#22c55e;}.t-worse{background:#ef4444;}
+.t-base{background:#94a3b8;}.t-break{background:#a855f7;}.t-new{background:#ec4899;}
+.llm-0{background:#e2e8f0;color:#475569;font-size:9px;padding:1px 5px;border-radius:6px;}
+.llm-1{background:#bfdbfe;color:#1d4ed8;font-size:9px;padding:1px 5px;border-radius:6px;}
+.llm-2{background:#fde68a;color:#92400e;font-size:9px;padding:1px 5px;border-radius:6px;}
+@media(prefers-color-scheme:dark){
+  .llm-0{background:#334155;color:#94a3b8;}
+  .llm-1{background:#1e3a5f;color:#93c5fd;}
+  .llm-2{background:#3d2b00;color:#fcd34d;}
+}
+
+.leg{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px;}
+.li{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);}
+.ld{width:16px;height:11px;border-radius:3px;}
+
+.ics{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 4px;}
+.ic{flex:1 1 90px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:8px 9px;}
+.icv{font-size:15px;font-weight:800;color:var(--accent);}
+.icv.new{color:#22c55e;}
+.icl{font-size:10px;color:var(--muted);margin-top:1px;line-height:1.35;}
+
+/* expandable explanation */
+.exp-panel{display:none;border-top:1px solid var(--border);padding:10px 12px 12px 24px;font-size:11px;line-height:1.6;}
+.exp-panel.open{display:block;}
+.exp-section{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 4px;}
+.exp-section:first-child{margin-top:0;}
+.why-row{display:flex;gap:6px;margin:3px 0;}
+.why-icon{flex-shrink:0;width:14px;}
+.chip{display:inline-block;font-size:9px;padding:1px 6px;border-radius:8px;background:var(--border);color:var(--muted);margin:2px 2px 0 0;}
+
+/* footer */
+.footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);}
+</style>
+</head>
+<body>
+
+<div class="site-header">
+  <h1>RAGOps — RAG Recall Improvement</h1>
+  <p>NSW Health Services Act 1997 · Grounded-79 evaluation set · LangGraph Learning Project</p>
+</div>
+
+<div class="hdr">
+  <div class="hdr-title">Full Experiment Journey</div>
+  <div class="hdr-sub">Click any method to expand its explanation</div>
+</div>
+
+<!-- Dataset flow -->
+<div class="pt">Dataset Evolution</div>
+<div class="flow">
+  <div class="fn"><div class="num" style="color:#3b82f6">21</div><div class="lbl">Golden Set<br>hand-labelled</div><div><span class="ftag bg-b">Phase 1</span></div></div>
+  <div class="fa">→</div>
+  <div class="fn"><div class="num" style="color:#f97316">100</div><div class="lbl">LLM-generated<br>simulated queries</div></div>
+  <div class="fa">→</div>
+  <div class="fn fn-fil"><div class="num" style="color:#ef4444">−21</div><div class="lbl">No answer in Act<br>— removed</div><div><span class="ftag bg-o">filtered</span></div></div>
+  <div class="fa">→</div>
+  <div class="fn fn-keep"><div class="num" style="color:#22c55e">79</div><div class="lbl">Grounded-79<br>true eval set</div><div><span class="ftag bg-g">Phase 2–4</span></div></div>
+</div>
+
+<div class="leg">
+  <div class="li"><div class="ld llm-0"></div>No LLM</div>
+  <div class="li"><div class="ld llm-1"></div>1× LLM / query</div>
+  <div class="li"><div class="ld llm-2"></div>2× LLM / query</div>
+</div>
+
+<div class="ics">
+  <div class="ic"><div class="icv">0.881</div><div class="icl">R@3 Golden Set<br>(inflated)</div></div>
+  <div class="ic"><div class="icv">0.750</div><div class="icl">R@5 true baseline<br>(Grounded-79)</div></div>
+  <div class="ic"><div class="icv">0.753</div><div class="icl">First break<br>of 0.75 ceiling</div></div>
+  <div class="ic"><div class="icv new">0.802</div><div class="icl">🆕 New best<br>LLMRnk@5</div></div>
+</div>
+
+<div class="pt">Phase 1 — Golden Set, 21 queries (R@3)</div>
+<div id="tl1"></div>
+<div class="pt">Phase 2 — Grounded-79, Establishing True Baseline (R@5)</div>
+<div id="tl2"></div>
+<div class="pt">Phase 3 — Breaking the 0.75 Ceiling (R@5)</div>
+<div id="tl3"></div>
+<div class="pt">Phase 4 — LLM Reranker · Current Best (R@5)</div>
+<div id="tl4"></div>
+
+<div class="footer">
+  Built during LangGraph / RAG / Agent Evaluation learning — M7 RAG Recall module ·
+  <a href="https://github.com/wangalv/RAGOps_demo01" style="color:var(--accent);">github.com/wangalv/RAGOps_demo01</a>
+</div>
+
+<script>
+const methods = [
+  { id:'hyde-r3', phase:'p1', name:'HyDE → Reranked@3', score:.881, color:'#3b82f6', tag:'base', tagLbl:'Best@21', llm:1, hl:false,
+    how:'Query → LLM generates a hypothetical legislative clause → embed that clause → vector search → cross-encoder rerank → top 3.',
+    why:[{i:'✓',t:'Bridges vocabulary gap: LLM generates Act-style language before embedding'},{i:'✓',t:'Cross-encoder reranker re-scores (query, passage) pairs — more precise than cosine similarity alone'}],
+    limits:'21 hand-crafted queries were curated "easy" cases — inflated true performance by ~17%.',
+    chips:['HyDE','cross-encoder','top-3']},
+
+  { id:'dense-r3', phase:'p1', name:'Dense → Reranked@3', score:.870, color:'#3b82f6', tag:null, llm:0, hl:false,
+    how:'Query → embedding → vector similarity search → cross-encoder rerank → top 3. No LLM involved.',
+    why:[{i:'✓',t:'Captures paraphrases semantically even without keyword match'},{i:'✓',t:'Zero LLM cost — fast and deterministic'}],
+    limits:'Single embedding of the raw query can miss vocabulary mismatches specific to legal language.',
+    chips:['dense vector','cross-encoder','no LLM']},
+
+  { id:'stepback-r3', phase:'p1', name:'StepBack → Rnk@3', score:.870, color:'#3b82f6', tag:null, llm:1, hl:false,
+    how:'LLM abstracts the specific query into a broader legal question → search with both original + abstract → merge → rerank.',
+    why:[{i:'✓',t:'Helps when the exact question is too narrow — broader question retrieves the relevant section'}],
+    limits:'For already broad queries, step-back adds no signal and costs an extra LLM call.',
+    chips:['step-back prompting','query abstraction']},
+
+  { id:'hyde-r5', phase:'p2', name:'HyDE → Reranked@5', score:.750, color:'#f97316', tag:'base', tagLbl:'True baseline', llm:1, hl:false,
+    how:'Same as HyDE→Reranked@3 but returns top 5. Evaluated on 79-query Grounded set.',
+    why:[{i:'⚠',t:'Scaling from 21 → 79 queries exposed harder cases: penalty vocabulary gaps, prohibition semantics, cross-section logic'}],
+    limits:'R@5=0.750 is the honest production baseline. The 21-query result (0.881) was overfit to easy queries.',
+    chips:['HyDE','cross-encoder','true baseline']},
+
+  { id:'dense-r5', phase:'p2', name:'Dense → Reranked@5', score:.732, color:'#f97316', tag:null, llm:0, hl:false,
+    how:'Identical to Dense→Reranked@3, returning top 5 on Grounded-79.',
+    why:[{i:'✓',t:'Competitive with HyDE despite no LLM calls — a strong zero-cost baseline'}],
+    limits:'Vocabulary mismatch remains: "fine" vs "guilty of an offence / penalty units".',
+    chips:['dense vector','cross-encoder','no LLM']},
+
+  { id:'routing', phase:'p2', name:'Query Routing', score:.720, color:'#f97316', tag:null, llm:1, hl:false,
+    how:'LLM classifies each query into Penalty / Prohibition / CrossSection / Other → routes to a specialised retriever per type.',
+    why:[{i:'✓',t:'Classification accuracy: 100% (79/79)'},{i:'✗',t:'Downstream retrievers (LQE for Penalty, MultiQuery for CrossSection) were individually weaker than HyDE'}],
+    limits:'Routing is only as good as the downstream retriever. Correct classification + weak retriever = net loss.',
+    chips:['query classification','routing','100% accuracy']},
+
+  { id:'lqe', phase:'p2', name:'Legal Query Expansion', score:.710, color:'#f97316', tag:null, llm:1, hl:false,
+    how:'LLM rewrites the query using Act vocabulary (e.g. "fine" → "maximum penalty in penalty units") → BM25 + dense hybrid search.',
+    why:[{i:'✓',t:'Helped 2 penalty queries where vocabulary was the only barrier'},{i:'✗',t:'BM25 added noise for the majority of well-formed queries'}],
+    limits:'Effective only for the small fraction of queries blocked purely by vocabulary mismatch.',
+    chips:['query rewriting','BM25 hybrid','legal vocabulary']},
+
+  { id:'legalhyde', phase:'p2', name:'Legal HyDE v2', score:.451, color:'#ef4444', tag:'worse', tagLbl:'Worst', llm:1, hl:false,
+    how:'Modified HyDE prompt that forces the generated document to use specific NSW Act vocabulary and phrasing.',
+    why:[{i:'✗',t:'Vocabulary constraints shifted LLM attention away from topical relevance → embeddings drifted off-topic'},{i:'✗',t:'R@5 dropped from 0.750 to 0.451 — the worst result overall'}],
+    limits:'You cannot force correct vocabulary AND correct semantics simultaneously via a single prompt.',
+    chips:['HyDE','vocabulary constraint','failed']},
+
+  { id:'subsecpc', phase:'p3', name:'SubsecPC → Rnk@5', score:.750, color:'#a855f7', tag:null, llm:0, hl:false,
+    how:'Split each section into subsection clauses (1169 chunks) + sentence-level children (1514) → search children → fetch subsection parent → MiniLM rerank → top 5. Zero LLM.',
+    why:[{i:'✓',t:'Finer retrieval unit: a single subsection clause embeds more precisely than a whole section'},{i:'✓',t:'Matches HyDE (0.750) with zero LLM cost'}],
+    limits:'Without query transformation, still misses vocabulary-gap queries (Penalty type).',
+    chips:['subsection chunking','parent-child','no LLM']},
+
+  { id:'subsecrouted', phase:'p3', name:'SubsecRoutedPC → Rnk@5', score:.753, color:'#a855f7', tag:'break', tagLbl:'Breaks 0.75', llm:1, hl:false,
+    how:'Route query type → type-specific transformation → search subsection child store → fetch subsection parents → MiniLM rerank → top 5.<br>· Penalty → LQE vocabulary expansion<br>· Prohibition → StepBack abstraction<br>· CrossSection → MultiQuery variants<br>· Other → HyDE hypothetical doc',
+    why:[{i:'✓',t:'Routing + fine-grained chunking + parent-child — all three benefits stack'},{i:'✓',t:'First method to break the 0.75 ceiling'}],
+    limits:'Non-deterministic: routing LLM has slight randomness, R@5 varies 0.753–0.759 across runs.',
+    chips:['routing','subsec parent-child','MiniLM','first >0.75']},
+
+  { id:'bge-embed', phase:'p3', name:'BGE Embedding (SubsecRouted)', score:.741, color:'#a855f7', tag:null, llm:1, hl:false,
+    how:'Same pipeline as SubsecRoutedPC but uses BAAI/bge-large-en-v1.5 (1024-dim) instead of MiniLM (384-dim) for embedding.',
+    why:[{i:'✓',t:'+0.013 over MiniLM-only embedding — larger model, richer semantic space'}],
+    limits:'Not combined with parent-child here, so it trails the full SubsecRoutedPC.',
+    chips:['BGE-large-en-v1.5','1024-dim']},
+
+  { id:'cascade', phase:'p3', name:'Cascade MiniLM → BGE', score:.728, color:'#ef4444', tag:'worse', tagLbl:'Worse', llm:1, hl:false,
+    how:'MiniLM cross-encoder prunes candidates to top 10 → BAAI/bge-reranker-large re-scores → final top 5.',
+    why:[{i:'✗',t:'BGE reranker is optimised for multilingual/Chinese tasks — underperforms on English legal text'},{i:'✗',t:'MiniLM (MS MARCO English) suits this task better; adding BGE as a 2nd stage degrades ranking'}],
+    limits:'Cascade reranking only helps when the second-stage model is stronger on the target domain.',
+    chips:['cascade','MiniLM→BGE','domain mismatch']},
+
+  { id:'bge-rnk', phase:'p3', name:'bge-reranker-large (sole reranker)', score:.709, color:'#ef4444', tag:'worse', tagLbl:'Worse', llm:1, hl:false,
+    how:'Replace MiniLM entirely with BAAI/bge-reranker-large as the sole cross-encoder reranker.',
+    why:[{i:'✗',t:'Trained primarily on Chinese/multilingual data, not English legal search'},{i:'✗',t:'Lowest R@5 in Phase 3'}],
+    limits:'Domain mismatch. MS MARCO-trained MiniLM is better calibrated for this task.',
+    chips:['BGE reranker','multilingual','worst reranker']},
+
+  { id:'rnk10', phase:'p3', name:'SubsecRoutedPC → Rnk@10', score:.797, color:'#22c55e', tag:'best', tagLbl:'@10 pool', llm:1, hl:false,
+    how:'Identical to SubsecRoutedPC→Rnk@5 but MiniLM returns 10 results instead of 5.',
+    why:[{i:'⚠',t:'R@5=0.797: the correct answer sits in the top-10 pool for 79.7% of queries'},{i:'⚠',t:'This is the theoretical ceiling for any 2nd-stage reranker that takes these top-10 as input'}],
+    limits:'Returns 10 results, not 5 — used to set the target ceiling for Phase 4.',
+    chips:['10 results returned','ceiling analysis']},
+
+  { id:'rnk20', phase:'p3', name:'SubsecRoutedPC → Rnk@20', score:.878, color:'#22c55e', tag:'best', tagLbl:'@20 pool', llm:1, hl:false,
+    how:'Same pipeline returning top 20. Diagnostic run only.',
+    why:[{i:'⚠',t:'Most "lost" answers are in the pool — the gap (0.75→0.80) is a reranking problem, not a retrieval problem'}],
+    limits:'20 results is impractical in production. Used to prove the gap is reranking, not coverage.',
+    chips:['20 results','diagnostic only']},
+
+  { id:'llmrnk', phase:'p4', name:'SubsecRoutedPC → LLMRnk@5', score:.802, color:'#22c55e', tag:'new', tagLbl:'New best', llm:2, hl:true,
+    how:'SubsecRoutedPC → MiniLM → top 10 → LLM scores each passage 0/1/2 using a 9-rule legal-aware prompt → sort by score → top 5.',
+    why:[
+      {i:'✓',t:'LLM understands legal semantic equivalence: "fine" = "penalty units", "prohibited" = "must not"'},
+      {i:'✓',t:'Rule 1 of prompt explicitly forbids section-title keyword traps'},
+      {i:'✓',t:'R@5=0.802 exceeds R@10=0.797 — LLM reranking beats simply widening the pool'},
+      {i:'⚠',t:'~10/79 queries got empty API responses, falling back to cross-encoder order'},
+    ],
+    limits:'2× LLM calls per query (routing + reranking) — slower and more expensive. Empty responses are non-deterministic.',
+    chips:['2×LLM','9-rule prompt','json_repair','current best']},
+];
+
+const MAX = 0.92;
+const llmC = ['llm-0','llm-1','llm-2'];
+const llmL = ['No LLM','1× LLM','2× LLM'];
+
+function rowHtml(d) {
+  const pct = d.score ? Math.round(d.score/MAX*100) : 0;
+  const sc  = d.score ? d.score.toFixed(3) : '···';
+  const scC = d.tag==='worse' ? '#ef4444'
+            : (d.tag==='best'||d.tag==='break'||d.tag==='new') ? '#22c55e'
+            : 'var(--text)';
+  const resBadge = d.tag ? `<span class="bg t-${d.tag}">${d.tagLbl}</span>` : '';
+  const whyHtml = (d.why||[]).map(w=>`<div class="why-row"><div class="why-icon">${w.i}</div><div>${w.t}</div></div>`).join('');
+  const chipHtml = (d.chips||[]).map(c=>`<span class="chip">${c}</span>`).join('');
+  return `<div class="er-wrap" id="wrap-${d.id}">
+    <div class="er${d.hl?' hl':''}" onclick="toggle('${d.id}')">
+      <div class="dot" style="background:${d.color}"></div>
+      <div class="ename">${d.name}</div>
+      <div class="bwrap">
+        <div class="bbg"><div class="bbar" style="background:${d.color}" data-w="${pct}"></div></div>
+        <div class="sc" style="color:${scC}">${sc}</div>
+      </div>
+      <div class="bdgs"><span class="${llmC[d.llm]}">${llmL[d.llm]}</span>${resBadge}</div>
+    </div>
+    <div class="exp-panel" id="panel-${d.id}">
+      <div class="exp-section">How it works</div>
+      <div>${d.how}</div>
+      <div class="exp-section">Why it helps / hurts</div>
+      ${whyHtml}
+      <div class="exp-section">Limitations</div>
+      <div>${d.limits}</div>
+      <div class="exp-section">Tags</div>
+      <div>${chipHtml}</div>
+    </div>
+  </div>`;
+}
+
+function render(id, phase) {
+  document.getElementById(id).innerHTML = methods.filter(m=>m.phase===phase).map(rowHtml).join('');
+}
+render('tl1','p1'); render('tl2','p2'); render('tl3','p3'); render('tl4','p4');
+
+setTimeout(()=>{ document.querySelectorAll('.bbar').forEach(b=>{ b.style.width=b.dataset.w+'%'; }); }, 80);
+
+function toggle(id) {
+  const panel = document.getElementById('panel-'+id);
+  const wrap  = document.getElementById('wrap-'+id);
+  panel.classList.toggle('open');
+  wrap.classList.toggle('open-wrap');
+}
+</script>
+</body>
+</html>
