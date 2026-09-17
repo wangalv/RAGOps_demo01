@@ -93,6 +93,27 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,
 
 .footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);}
 
+/* ── PoC / Production badges ─────────────────────────── */
+.env-badge{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;
+           letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:4px;
+           vertical-align:middle;margin-left:6px;}
+.poc-badge{background:#fef3c7;color:#92400e;border:1px solid #fcd34d;}
+.prod-badge{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;}
+@media(prefers-color-scheme:dark){
+  .poc-badge{background:#3d2b00;color:#fde68a;border-color:#78450a;}
+  .prod-badge{background:#064e3b;color:#6ee7b7;border-color:#065f46;}
+}
+
+/* ── Production boundary banner ──────────────────────── */
+.prod-boundary{display:flex;align-items:center;gap:10px;margin:20px 0 4px;}
+.prod-boundary-line{flex:1;height:1px;background:var(--border);}
+.prod-boundary-pill{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+                    background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;
+                    padding:3px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;}
+@media(prefers-color-scheme:dark){
+  .prod-boundary-pill{background:#064e3b;color:#6ee7b7;border-color:#065f46;}
+}
+
 /* ── metrics explainer ─────────────────────────────────── */
 .mex{background:var(--card);border:1px solid var(--border);border-radius:10px;margin:14px 0 6px;overflow:hidden;}
 .mex-toggle{width:100%;background:none;border:none;padding:10px 14px;display:flex;align-items:center;
@@ -264,19 +285,26 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,
 </div>
 
 <div class="ics">
-  <div class="ic"><div class="icv">0.881</div><div class="icl">R@3 Golden Set<br>(inflated)</div></div>
-  <div class="ic"><div class="icv">0.750</div><div class="icl">R@5 true baseline<br>(Grounded-79)</div></div>
+  <div class="ic"><div class="icv">0.881</div><div class="icl">R@3 Golden Set<br><span class="poc-badge">PoC demo</span></div></div>
+  <div class="ic"><div class="icv">0.750</div><div class="icl">R@5 true baseline<br><span class="prod-badge">Production</span></div></div>
   <div class="ic"><div class="icv">0.753</div><div class="icl">First break<br>of 0.75 ceiling</div></div>
   <div class="ic"><div class="icv new">0.802</div><div class="icl">🆕 New best<br>LLM Reranker</div></div>
 </div>
 
-<div class="pt">Phase 1 — Golden Set, 21 queries (R@3)</div>
+<div class="pt">Phase 1 — Golden Set, 21 queries (R@3) <span class="poc-badge">⚑ PoC Demo</span></div>
 <div id="tl1"></div>
-<div class="pt">Phase 2 — Grounded-79, Establishing True Baseline (R@5)</div>
+
+<div class="prod-boundary">
+  <div class="prod-boundary-line"></div>
+  <div class="prod-boundary-pill">↓ Production reality begins here</div>
+  <div class="prod-boundary-line"></div>
+</div>
+
+<div class="pt">Phase 2 — Grounded-79, Establishing True Baseline (R@5) <span class="prod-badge">✦ Production</span></div>
 <div id="tl2"></div>
-<div class="pt">Phase 3 — Breaking the 0.75 Ceiling (R@5)</div>
+<div class="pt">Phase 3 — Breaking the 0.75 Ceiling (R@5) <span class="prod-badge">✦ Production</span></div>
 <div id="tl3"></div>
-<div class="pt">Phase 4 — LLM Reranker · Current Best (R@5)</div>
+<div class="pt">Phase 4 — LLM Reranker · Current Best (R@5) <span class="prod-badge">✦ Production</span></div>
 <div id="tl4"></div>
 
 
