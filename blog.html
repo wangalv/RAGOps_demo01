@@ -1,550 +1,492 @@
-<title>RAGOps</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>From RAG PoC to Production: What the Demo Doesn't Tell You</title>
+<meta name="description" content="A practical study of RAG retrieval quality, Recall, Precision and the engineering gap between a successful demo and a reliable production system.">
 <style>
   :root {
-    --ground:   #F5F6F9;
-    --ink:      #111827;
-    --ink-sec:  #374151;
-    --accent:   #1B4FD8;
-    --muted:    #637086;
-    --rule:     #DDE2EC;
-    --callout:  #EBF1FF;
-    --callout-b:#B8CDF8;
-    --phase-b:  #1B4FD8;
-    --table-h:  #E4EBF8;
-    --mono-bg:  #ECEEF4;
-    --tag-bg:   #DDE7FA;
-    --tag-ink:  #1B4FD8;
+    --bg: #f7f7f5;
+    --surface: #ffffff;
+    --text: #1f2328;
+    --muted: #667085;
+    --border: #e5e7eb;
+    --accent: #2563eb;
+    --accent-soft: #eff6ff;
+    --code: #f3f4f6;
+    --max: 900px;
   }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --ground:   #0D1118;
-      --ink:      #E4EBF5;
-      --ink-sec:  #B8C4D8;
-      --accent:   #5B8FFA;
-      --muted:    #7B8FA8;
-      --rule:     #1E2A3B;
-      --callout:  #132040;
-      --callout-b:#2A4A80;
-      --phase-b:  #5B8FFA;
-      --table-h:  #192540;
-      --mono-bg:  #141C28;
-      --tag-bg:   #1A2F55;
-      --tag-ink:  #8BB4FF;
-    }
-  }
-  :root[data-theme="dark"] {
-    --ground:   #0D1118;
-    --ink:      #E4EBF5;
-    --ink-sec:  #B8C4D8;
-    --accent:   #5B8FFA;
-    --muted:    #7B8FA8;
-    --rule:     #1E2A3B;
-    --callout:  #132040;
-    --callout-b:#2A4A80;
-    --phase-b:  #5B8FFA;
-    --table-h:  #192540;
-    --mono-bg:  #141C28;
-    --tag-bg:   #1A2F55;
-    --tag-ink:  #8BB4FF;
-  }
-
-  *, *::before, *::after { box-sizing: border-box; }
-
+  * { box-sizing: border-box; }
   body {
     margin: 0;
-    background: var(--ground);
-    color: var(--ink);
-    font-family: "IBM Plex Sans", system-ui, sans-serif;
-    font-size: 17px;
-    line-height: 1.72;
-    padding-inline: 24px;
-    padding-block: 64px 96px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.75;
   }
-
-  article {
-    max-width: 68ch;
-    margin-inline: auto;
+  main {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 64px 24px 96px;
   }
-
-  /* ── Header ─────────────────────────────────────────── */
-  .masthead {
+  header {
     margin-bottom: 56px;
-    border-bottom: 1px solid var(--rule);
-    padding-bottom: 40px;
   }
-
-  .byline {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 16px;
-    margin-bottom: 24px;
-    font-family: "IBM Plex Mono", monospace;
-    font-size: 12px;
-    color: var(--muted);
-    letter-spacing: .04em;
-    text-transform: uppercase;
-  }
-
-  .byline-sep { color: var(--rule); }
-
-  .tag {
-    display: inline-block;
-    background: var(--tag-bg);
-    color: var(--tag-ink);
-    padding: 2px 8px;
-    border-radius: 3px;
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-  }
-
   h1 {
-    font-family: "DM Serif Display", Georgia, serif;
-    font-size: clamp(2rem, 5vw, 2.9rem);
-    font-weight: 400;
-    line-height: 1.18;
+    font-size: clamp(2.2rem, 6vw, 4rem);
+    line-height: 1.08;
+    letter-spacing: -0.04em;
     margin: 0 0 20px;
-    text-wrap: balance;
-    color: var(--ink);
   }
-
-  .deck {
-    font-size: 1.12rem;
-    line-height: 1.6;
-    color: var(--ink-sec);
-    margin: 0;
-    max-width: 60ch;
-  }
-
-  /* ── Section headings ────────────────────────────────── */
-  h2 {
-    font-family: "DM Serif Display", Georgia, serif;
-    font-size: 1.55rem;
-    font-weight: 400;
-    line-height: 1.25;
-    margin: 56px 0 16px;
-    text-wrap: balance;
-    color: var(--ink);
-  }
-
-  h3 {
-    font-family: "IBM Plex Sans", system-ui, sans-serif;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin: 40px 0 12px;
-  }
-
-  p {
-    margin: 0 0 20px;
-    color: var(--ink-sec);
-  }
-
-  p:last-child { margin-bottom: 0; }
-
-  strong { color: var(--ink); font-weight: 600; }
-
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
-
-  /* ── Phase blocks ────────────────────────────────────── */
-  .phase {
-    border-left: 3px solid var(--phase-b);
-    padding-left: 24px;
-    margin: 40px 0;
-  }
-
-  .phase-label {
-    font-family: "IBM Plex Mono", monospace;
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin: 0 0 6px;
-  }
-
-  .phase h3 {
-    margin: 0 0 16px;
-    font-size: 0.85rem;
-    letter-spacing: .08em;
-    color: var(--ink);
-  }
-
-  /* ── Callout ─────────────────────────────────────────── */
-  .callout {
-    background: var(--callout);
-    border: 1px solid var(--callout-b);
-    border-radius: 4px;
-    padding: 20px 24px;
-    margin: 32px 0;
-  }
-
-  .callout p {
-    margin: 0;
-    font-size: 0.95rem;
-    color: var(--ink-sec);
-  }
-
-  .callout strong { color: var(--ink); }
-
-  /* ── Metric inline ───────────────────────────────────── */
-  .metric {
-    font-family: "IBM Plex Mono", monospace;
-    font-size: 0.88em;
-    background: var(--mono-bg);
-    color: var(--ink);
-    padding: 1px 6px;
-    border-radius: 3px;
-  }
-
-  /* ── Big number callout ──────────────────────────────── */
-  .stat-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1px;
-    margin: 36px 0;
-    border: 1px solid var(--rule);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .stat {
-    flex: 1 1 140px;
-    padding: 20px 24px;
-    background: var(--ground);
-    border-right: 1px solid var(--rule);
-  }
-
-  .stat:last-child { border-right: none; }
-
-  .stat-num {
-    font-family: "IBM Plex Mono", monospace;
-    font-size: 1.9rem;
-    font-weight: 500;
-    line-height: 1;
-    color: var(--ink);
-    font-variant-numeric: tabular-nums;
-    margin-bottom: 6px;
-  }
-
-  .stat-num.accent { color: var(--accent); }
-
-  .stat-lbl {
-    font-size: 0.74rem;
-    font-weight: 500;
-    letter-spacing: .08em;
-    text-transform: uppercase;
+  .subtitle {
+    font-size: 1.2rem;
     color: var(--muted);
+    max-width: 760px;
   }
-
-  /* ── Table ───────────────────────────────────────────── */
-  .table-wrap {
+  h2 {
+    margin-top: 56px;
+    font-size: 1.8rem;
+    letter-spacing: -0.02em;
+  }
+  h3 {
+    margin-top: 34px;
+    font-size: 1.25rem;
+  }
+  p { margin: 18px 0; }
+  strong { font-weight: 700; }
+  blockquote {
+    margin: 28px 0;
+    padding: 18px 24px;
+    border-left: 4px solid var(--accent);
+    background: var(--accent-soft);
+    font-size: 1.08rem;
+  }
+  pre {
     overflow-x: auto;
-    margin: 40px 0;
-    border: 1px solid var(--rule);
-    border-radius: 4px;
+    background: var(--code);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    line-height: 1.5;
   }
-
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
   table {
     width: 100%;
     border-collapse: collapse;
-    font-family: "IBM Plex Sans", system-ui, sans-serif;
-    font-size: 0.9rem;
-    font-variant-numeric: tabular-nums;
+    margin: 24px 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
   }
-
-  thead tr {
-    background: var(--table-h);
-  }
-
-  th {
+  th, td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
     text-align: left;
-    padding: 11px 16px;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    border-bottom: 1px solid var(--rule);
-    white-space: nowrap;
   }
-
-  td {
-    padding: 11px 16px;
-    border-bottom: 1px solid var(--rule);
-    color: var(--ink-sec);
-    vertical-align: top;
-  }
-
-  td:first-child { color: var(--ink); }
-
-  tbody tr:last-child td { border-bottom: none; }
-
-  td.num {
-    font-family: "IBM Plex Mono", monospace;
-    font-size: 0.85rem;
-    white-space: nowrap;
-    color: var(--ink);
-  }
-
-  td.gain {
-    font-family: "IBM Plex Mono", monospace;
-    font-size: 0.85rem;
-    color: var(--accent);
-    font-weight: 500;
-    white-space: nowrap;
-  }
-
-  tr.highlight-row td {
-    background: var(--callout);
-    font-weight: 500;
-  }
-
-  tr.highlight-row td.gain {
+  th { background: #f9fafb; font-weight: 700; }
+  tr:last-child td { border-bottom: 0; }
+  .metric {
+    font-size: 1.45rem;
     font-weight: 700;
+    margin: 6px 0;
   }
-
-  /* ── Section divider ─────────────────────────────────── */
-  .section-rule {
-    border: none;
-    border-top: 1px solid var(--rule);
-    margin: 60px 0;
+  ul { padding-left: 24px; }
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 56px 0;
   }
-
-  /* ── Closing ─────────────────────────────────────────── */
-  .closing {
-    margin-top: 64px;
-    padding-top: 32px;
-    border-top: 1px solid var(--rule);
-    font-size: 0.83rem;
+  footer {
     color: var(--muted);
-    font-family: "IBM Plex Mono", monospace;
-    letter-spacing: .02em;
+    font-size: .9rem;
+    margin-top: 70px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
   }
-
-  /* ── Responsive ──────────────────────────────────────── */
-  @media (max-width: 480px) {
-    body { padding-block: 40px 72px; padding-inline: 20px; }
-    h1 { font-size: 1.8rem; }
-    h2 { font-size: 1.35rem; margin-top: 44px; }
-    .stat-num { font-size: 1.55rem; }
-    .phase { padding-left: 16px; }
-    .callout { padding: 16px 18px; }
-    th, td { padding: 9px 12px; }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    * { transition: none !important; animation: none !important; }
+  @media (max-width: 640px) {
+    main { padding: 40px 18px 70px; }
+    h2 { margin-top: 42px; }
+    table { font-size: .9rem; }
+    th, td { padding: 10px; }
   }
 </style>
+</head>
+<body>
+<main>
 
-<article>
-  <header class="masthead">
-    <div class="byline">
-      <span class="tag">Engineering</span>
-      <span class="byline-sep">·</span>
-      <span>Alvin Wang</span>
-      <span class="byline-sep">·</span>
-      <span>September 2026</span>
-      <span class="byline-sep">·</span>
-      <span>RAG · Evaluation · AI Operations</span>
-    </div>
-    <h1>RAGOps: The Hidden Cost of Taking RAG from Proof of Concept to Production</h1>
-    <p class="deck">A hands-on study of 15 retrieval experiments on the NSW Health Services Act 1997 — and what it reveals about the engineering investment that separates a demo from a reliable production system.</p>
-  </header>
+<header>
+  <h1>From RAG PoC to Production: What the Demo Doesn't Tell You</h1>
+  <p class="subtitle"><em>A practical study of RAG retrieval quality, Recall, Precision and the engineering gap between a successful demo and a reliable production system.</em></p>
+</header>
 
-  <h2>The Demo Problem</h2>
+<h2>The RAG Demo Looks Easy</h2>
+<p>You've probably seen the demo.</p>
+<p>Upload a set of documents.</p>
+<p>Ask a question.</p>
+<p>The system finds the relevant information and an LLM produces a clear, natural-language answer.</p>
+<p><strong>It works.</strong></p>
+<p>And that naturally leads to the next question:</p>
+<blockquote><strong>"If the PoC works, how difficult can it be to put it into production?"</strong></blockquote>
+<p>This is where the story gets interesting.</p>
+<p>A RAG PoC can be surprisingly easy to build.</p>
+<p><strong>A production RAG system is a very different animal.</strong></p>
+<p>The difference is not simply infrastructure, scalability or API management.</p>
+<p>The harder question is:</p>
+<blockquote><strong>Can we trust the system to find the right information consistently — including the questions we didn't think of when we built the PoC?</strong></blockquote>
+<p>That question led me to this study.</p>
+<p>I built and evaluated a RAG pipeline against the NSW Health Services Act 1997, running 15 retrieval experiments across several different approaches.</p>
+<p>What I found was simple:</p>
+<blockquote><strong>A successful RAG demo proves that RAG can work. It does not prove that RAG will work reliably in production.</strong></blockquote>
 
-  <p>There is a moment most AI projects share: the demo works. A language model answers questions from your documents, confidently and fluently, and the room lights up. The natural next question — "how long to productionise this?" — is where the trouble begins.</p>
+<h2>First, What Is RAG?</h2>
+<p>Before looking at the experiments, it is worth understanding what actually happens inside a RAG system.</p>
+<p>RAG stands for <strong>Retrieval-Augmented Generation</strong>.</p>
+<p>The basic idea is straightforward:</p>
+<pre><code>User Question
+      ↓
+Retrieve relevant document chunks
+      ↓
+Put those chunks into the LLM context
+      ↓
+LLM generates the answer</code></pre>
+<p>Instead of asking the LLM to rely entirely on what it learned during training, we give it relevant information from an external knowledge source.</p>
+<p>For example, imagine a user asks:</p>
+<blockquote>"What penalty applies if someone breaches Section X?"</blockquote>
+<p>A RAG system might:</p>
+<ol>
+  <li>Convert the question into a representation that can be searched.</li>
+  <li>Search the document collection.</li>
+  <li>Retrieve the most relevant passages.</li>
+  <li>Give those passages to the LLM.</li>
+  <li>Ask the LLM to answer using the retrieved evidence.</li>
+</ol>
+<p>The important point is that <strong>the LLM is only as good as the context it receives</strong>.</p>
+<p>And this is where the first production problem appears.</p>
 
-  <p>Most organisations answer in weeks. The real answer, for any system where accuracy actually matters, is measured in months of engineering investment that never fully stops.</p>
+<h2>Retrieval Comes Before Generation</h2>
+<p>When people talk about RAG accuracy, the conversation often jumps straight to the LLM.</p>
+<p>But there are actually two very different questions:</p>
+<h3>Question 1 — Did we find the right information?</h3>
+<p>This is the <strong>retrieval problem</strong>.</p>
+<h3>Question 2 — Did the LLM use that information correctly?</h3>
+<p>This is the <strong>generation problem</strong>.</p>
+<p>These are different failure modes.</p>
+<p>Consider this example.</p>
+<p>The correct answer exists in the knowledge base.</p>
+<p>But the retriever fails to return the relevant passage.</p>
+<p>The LLM never sees it.</p>
+<p>No amount of prompt engineering can make the model answer from information that was never provided to it.</p>
+<p>This is why retrieval quality deserves to be measured independently.</p>
 
-  <p>This gap between a RAG proof of concept and a production RAG system is not primarily a software problem. It is an evaluation problem, a measurement problem, and ultimately an operations problem. I've spent several months studying this on a real-world system built over the <a href="https://legislation.nsw.gov.au/view/html/inforce/current/act-1997-154">NSW Health Services Act 1997</a>, and the results are instructive.</p>
+<h2>Recall: Did We Find the Answer?</h2>
+<p>One of the most important retrieval metrics is <strong>Recall@K</strong>.</p>
+<p>Suppose the system retrieves the top 5 chunks.</p>
+<p>Recall@5 asks:</p>
+<blockquote><strong>Did the correct information appear somewhere in those five chunks?</strong></blockquote>
+<p>For example:</p>
+<pre><code>100 questions
+80 questions → correct passage found in top 5
+20 questions → correct passage not found</code></pre>
+<p>Then:</p>
+<p class="metric">Recall@5 = 80%</p>
+<p>This does not mean that the final answers are 80% correct.</p>
+<p>It means something more specific:</p>
+<blockquote><strong>For 80% of the questions, the retrieval system gave the LLM a chance to find the answer.</strong></blockquote>
+<p>That distinction is extremely important.</p>
+<p>If Recall@5 is only 70%, then for roughly 30% of the questions, the correct evidence never reached the LLM.</p>
+<p>The model cannot reliably answer information it never received.</p>
 
-  <h2>Why Accuracy Is Different from Functionality</h2>
+<h2>Precision: How Much Noise Did We Retrieve?</h2>
+<p>Recall tells us whether we found the answer.</p>
+<p>Precision asks a different question:</p>
+<blockquote><strong>Of the information we retrieved, how much of it was actually relevant?</strong></blockquote>
+<p>Imagine we retrieve 5 chunks:</p>
+<pre><code>Chunk 1 → Relevant
+Chunk 2 → Irrelevant
+Chunk 3 → Irrelevant
+Chunk 4 → Relevant
+Chunk 5 → Irrelevant</code></pre>
+<p>Only 2 of the 5 chunks are relevant.</p>
+<p>So:</p>
+<p class="metric">Precision@5 = 40%</p>
+<p>We found the answer.</p>
+<p>But we also gave the LLM a lot of noise.</p>
+<p>This matters because irrelevant context consumes tokens, increases cost, can distract the model, and can make the final answer less reliable.</p>
+<p>So there is an important trade-off:</p>
+<blockquote><strong>High Recall means we are less likely to miss the answer.</strong></blockquote>
+<blockquote><strong>High Precision means we are less likely to bury the answer in noise.</strong></blockquote>
+<p>A production RAG system needs to care about both.</p>
 
-  <p>A RAG system has two distinct failure modes. The first — the demo-layer failure — is when the system returns nothing useful. Easy to spot, easy to demo your way past. The second is more dangerous: the system returns a confident, fluent answer that is subtly or materially wrong.</p>
+<h2>Then What Is Top-K?</h2>
+<p>This brings us to another deceptively simple parameter:</p>
+<p><strong>K.</strong></p>
+<p>If K = 5, the retriever returns the top 5 results.</p>
+<p>If K = 10, it returns the top 10.</p>
+<p>Increasing K usually gives the system a bigger net.</p>
+<p>That can improve Recall.</p>
+<p>But it also introduces more information — including potentially irrelevant information.</p>
+<p>For example:</p>
+<pre><code>Top-K = 3
 
-  <p>In legal and compliance contexts, the second failure is career-ending. An AI system that confidently cites the wrong clause, misses a penalty provision, or answers from the wrong part of the Act is worse than no system at all.</p>
+[Relevant]
+[Relevant]
+[Irrelevant]</code></pre>
+<p>versus:</p>
+<pre><code>Top-K = 10
 
-  <p>To measure this, I built a benchmark I call <strong>Grounded-79</strong>: 79 questions generated by an LLM, each with a confirmed, verifiable answer in the Act. The core metric is <strong>Recall@K</strong> — on what fraction of queries does the correct passage appear somewhere in the top K retrieved results? That is the retrieval system's primary job: cast the net wide enough to catch the answer.</p>
+[Relevant]
+[Relevant]
+[Irrelevant]
+[Irrelevant]
+[Irrelevant]
+[Relevant]
+[Irrelevant]
+[Irrelevant]
+[Irrelevant]
+[Irrelevant]</code></pre>
+<p>The second system may have better recall.</p>
+<p>But it may also have worse precision.</p>
+<p>And now we have a fundamental RAG engineering problem:</p>
+<blockquote><strong>How many documents should we retrieve?</strong></blockquote>
+<p>There is no universal answer.</p>
+<p>It depends on the documents, the questions, the chunking strategy, the retrieval model, the context window and the downstream generation model.</p>
+<p>This is one reason why "the RAG works" is not really an evaluation strategy.</p>
 
-  <p>A second metric, <strong>Precision@K</strong>, tracks what fraction of those K results are actually relevant. High Recall but low Precision means the system catches the answer but buries it in noise — which raises cost and degrades generation quality.</p>
+<h2>Phase 1 — The PoC Looks Great</h2>
+<p>This was the first stage of my study.</p>
+<p>I created a small manually designed Golden Set of 21 questions against the NSW Health Services Act.</p>
+<p>The initial results looked very good.</p>
+<p class="metric">Recall@3 = 0.881</p>
+<p>In other words, the correct passage appeared in the top three results for approximately 88% of the questions.</p>
+<p>If this were a typical PoC presentation, this is probably where the conversation would become very positive.</p>
+<p>The demo works.</p>
+<p>The answers look good.</p>
+<p>The retrieval score looks good.</p>
+<p>So why not move to production?</p>
+<p>Because the benchmark itself was part of the problem.</p>
 
-  <div class="callout">
-    <p><strong>A worked example.</strong> Recall@5 = 0.80 means that for 80 out of 100 queries, the correct passage appears somewhere in the five results returned. Precision@5 = 0.20 means that across all those results, only 1 in 5 is actually relevant. The system finds the answer — but mostly returns noise alongside it.</p>
-  </div>
+<h2>Phase 2 — Ask Harder Questions</h2>
+<p>The 21 questions were created by someone who already understood the Act.</p>
+<p>They were clean.</p>
+<p>They were predictable.</p>
+<p>They reflected the structure of the source material.</p>
+<p>Real users are different.</p>
+<p>Users don't necessarily ask:</p>
+<blockquote>"What does Section 42 say?"</blockquote>
+<p>They may ask:</p>
+<blockquote>"What happens if someone does this?"</blockquote>
+<blockquote>"Is there a penalty for doing X?"</blockquote>
+<blockquote>"What happens if this requirement isn't followed?"</blockquote>
+<blockquote>"Does this apply when the person is operating under condition Y?"</blockquote>
+<p>The wording of the question may have very little overlap with the wording of the legislation.</p>
+<p>So I expanded the benchmark to <strong>79 questions</strong>, covering a broader range of realistic query patterns.</p>
+<p>The result changed dramatically.</p>
+<p>The baseline became:</p>
+<p class="metric">Recall@5 = 0.750</p>
+<p>And Precision@5 was approximately:</p>
+<p class="metric">0.169</p>
+<p>The PoC's 88% retrieval result had become a much less comfortable production baseline.</p>
+<p>This was the first major lesson:</p>
+<blockquote><strong>Your benchmark can make your RAG system look better than it really is.</strong></blockquote>
+<p>A benchmark is not just a measurement tool.</p>
+<p>It defines what "good" means.</p>
 
-  <h2>Four Phases of Optimisation</h2>
+<h2>Phase 3 — Now We Start Engineering</h2>
+<p>Once the harder benchmark exposed the weaknesses, the next question became:</p>
+<blockquote><strong>Can we improve retrieval?</strong></blockquote>
+<p>I tested several approaches.</p>
 
-  <div class="phase">
-    <p class="phase-label">Phase 1</p>
-    <h3>The Trap of the Golden Set</h3>
-    <p>The project began with 21 hand-crafted questions — what I call the Golden Set. Early results looked excellent: <span class="metric">Recall@3 = 0.881</span>. We were 88% accurate. Ship it?</p>
-    <p>Not quite. The Golden Set was crafted by someone who knew the Act. The questions were cleaner, more predictable, and more accommodating than what real users ask. When we expanded to the Grounded-79 benchmark — 79 LLM-generated questions reflecting a more realistic range of query styles — the true baseline emerged: <strong><span class="metric">Recall@5 = 0.750</span></strong>.</p>
-    <p>The first lesson: your evaluation set is your system's floor. A benchmark too close to your training distribution will always flatter. The Golden Set numbers were inflated by roughly 17 percentage points relative to real conditions.</p>
-  </div>
+<h3>1. Better Chunking</h3>
+<p>Instead of treating large sections of legislation as single chunks, I experimented with more granular subsection-level chunks.</p>
+<p>The idea is simple:</p>
+<blockquote>Give the retriever smaller, more precise targets.</blockquote>
 
-  <div class="phase">
-    <p class="phase-label">Phase 2</p>
-    <h3>Establishing the True Baseline</h3>
-    <p>Grounded-79 revealed failure modes invisible in Phase 1. Many queries involved penalty provisions, cross-referenced sections, or prohibition clauses with specific conditions — exactly the queries where retrieval fails most dramatically, because the relevant passage may be structurally disconnected from the question's surface text.</p>
-    <p>With the true baseline established (<span class="metric">R@5 = 0.750</span>, <span class="metric">P@5 ≈ 0.169</span>), we had a real target. Improving over 75% is far harder than improving over 60%, because easy wins are already captured.</p>
-  </div>
+<h3>2. Parent-Child Retrieval</h3>
+<p>Instead of searching only large passages, retrieval can happen at a smaller level while returning a larger parent context.</p>
+<p>This tries to balance <strong>retrieval precision</strong> with <strong>context completeness</strong>.</p>
 
-  <div class="phase">
-    <p class="phase-label">Phase 3</p>
-    <h3>Structural Retrieval Improvements</h3>
-    <p>Phase 3 applied a range of structural and architectural techniques:</p>
-    <p><strong>Subsection chunking</strong> splits the Act at the clause level rather than paragraph level, giving the retrieval system finer-grained targets. This reduces the chance a relevant passage is buried inside a large chunk that mostly contains irrelevant text.</p>
-    <p><strong>Parent-child retrieval</strong> searches at the sentence level but returns the parent clause — retrieval specificity without sacrificing answer completeness.</p>
-    <p><strong>Query routing</strong> uses an LLM to classify the incoming question — is this a Penalty query? A Prohibition query? A Cross-Section reference? — and applies specialised retrieval logic for each. Legal questions have structural patterns; routing exploits them.</p>
-    <p><strong>HyDE</strong> (Hypothetical Document Embedding) generates a synthetic "ideal answer" using an LLM, then uses that synthetic text as the retrieval query. This sidesteps the vocabulary mismatch between how questions are asked and how legislation is written.</p>
-    <p>After all Phase 3 techniques combined: <strong><span class="metric">Recall@5 = 0.753</span></strong>. Three tenths of a percentage point above baseline. Months of work.</p>
-    <p>This is perhaps the most important data point in the project. Every structural technique — chunking strategy, retrieval architecture, query classification, embedding tricks — collectively moved the needle by 0.3%.</p>
-  </div>
+<h3>3. Query Routing</h3>
+<p>Different questions have different structures.</p>
+<p>A question about a penalty is not necessarily the same type of question as a question about a prohibition or a cross-reference.</p>
+<p>I experimented with using an LLM to classify the query and route it through different retrieval strategies.</p>
 
-  <div class="phase">
-    <p class="phase-label">Phase 4</p>
-    <h3>LLM Reranking</h3>
-    <p>The breakthrough came from reranking. Rather than improving what the retrieval system returns, the LLM reranker improves how results are ordered <em>after</em> retrieval.</p>
-    <p>Each retrieved passage is scored by an LLM using a 9-rule legal-aware prompt. Passages receive a score of 0, 1, or 2; results are sorted by score and the top 5 retained. The LLM understands legal document structure in a way cosine similarity cannot.</p>
-    <p>Final result: <strong><span class="metric">Recall@5 = 0.802</span></strong> — a 5.2 percentage point gain from Phase 3, and 5.2 points above baseline. That final step cost two additional LLM calls per query.</p>
-  </div>
+<h3>4. HyDE</h3>
+<p>HyDE — Hypothetical Document Embeddings — takes another approach.</p>
+<p>Instead of searching directly using the user's question, an LLM generates a hypothetical answer or document-like representation and uses that for retrieval.</p>
+<p>The motivation is to reduce the vocabulary gap between:</p>
+<pre><code>How the user asks the question</code></pre>
+<p>and:</p>
+<pre><code>How the legislation is actually written</code></pre>
 
-  <div class="stat-row">
-    <div class="stat">
-      <div class="stat-num">0.750</div>
-      <div class="stat-lbl">Baseline R@5</div>
-    </div>
-    <div class="stat">
-      <div class="stat-num">0.753</div>
-      <div class="stat-lbl">After Phase 3 (all structural)</div>
-    </div>
-    <div class="stat">
-      <div class="stat-num accent">0.802</div>
-      <div class="stat-lbl">LLM Reranker (Phase 4)</div>
-    </div>
-    <div class="stat">
-      <div class="stat-num">15</div>
-      <div class="stat-lbl">Experimental variants</div>
-    </div>
-  </div>
+<h2>The Surprising Result</h2>
+<p>After combining these structural techniques, the Recall@5 result became:</p>
+<p class="metric">0.753</p>
+<p>The original baseline was:</p>
+<p class="metric">0.750</p>
+<p>So after all that engineering:</p>
+<p><strong>+0.003</strong></p>
+<p>Three tenths of a percentage point.</p>
+<p>This was one of the most interesting findings in the study.</p>
+<p>Some techniques sound sophisticated.</p>
+<p>Some techniques are genuinely useful.</p>
+<p>But sophisticated architecture does not automatically translate into meaningful retrieval improvement.</p>
+<p>And this is exactly the kind of thing a PoC does not tell you.</p>
 
-  <h2>What It Takes to Move the Needle</h2>
+<h2>Phase 4 — Reranking Changes the Picture</h2>
+<p>The more significant improvement came from a different idea:</p>
+<p><strong>Reranking.</strong></p>
+<p>Instead of relying entirely on embedding similarity to determine the final order of results, I retrieved a candidate set and then used an LLM to evaluate the relevance of those passages.</p>
+<p>The reranker evaluated each retrieved passage against a set of legal-aware rules and assigned a relevance score.</p>
+<p>The results were then reordered and the best passages retained.</p>
+<p>The result:</p>
+<p class="metric">Recall@5 = 0.802</p>
+<p>Compared with the Phase 3 result of 0.753, this was a <strong>5.2 percentage point improvement</strong>.</p>
+<p>But there was a trade-off.</p>
+<p>The reranking approach required additional LLM calls for every query.</p>
+<p>So the engineering question changed again:</p>
+<blockquote><strong>Is the additional accuracy worth the additional latency and cost?</strong></blockquote>
+<p>That is a production question.</p>
+<p>A PoC often doesn't ask it.</p>
 
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Technique</th>
-          <th>Recall@5</th>
-          <th>Gain vs. Baseline</th>
-          <th>LLM Calls / Query</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>Baseline — embedding similarity</td>
-          <td class="num">0.750</td>
-          <td class="num">—</td>
-          <td class="num">0</td>
-        </tr>
-        <tr>
-          <td>+ Subsection chunking</td>
-          <td class="num">0.752</td>
-          <td class="gain">+0.002</td>
-          <td class="num">0</td>
-        </tr>
-        <tr>
-          <td>+ Parent-child retrieval</td>
-          <td class="num">0.751</td>
-          <td class="gain">+0.001</td>
-          <td class="num">0</td>
-        </tr>
-        <tr>
-          <td>+ Query routing</td>
-          <td class="num">0.752</td>
-          <td class="gain">+0.002</td>
-          <td class="num">1</td>
-        </tr>
-        <tr>
-          <td>+ HyDE</td>
-          <td class="num">0.753</td>
-          <td class="gain">+0.003</td>
-          <td class="num">1</td>
-        </tr>
-        <tr class="highlight-row">
-          <td>+ LLM Reranker @5</td>
-          <td class="num">0.802</td>
-          <td class="gain">+0.052</td>
-          <td class="num">2</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+<h2>What the PoC Didn't Show Me</h2>
+<p>After going through these experiments, I started to see RAG differently.</p>
+<p>A RAG system is not simply:</p>
+<pre><code>Documents → Vector Database → LLM</code></pre>
+<p>A production system has multiple quality surfaces.</p>
 
-  <p>The structural techniques are essentially free but yield fractional improvements. The LLM-powered techniques yield material improvements but at real cost per query.</p>
+<h3>1. Retrieval</h3>
+<p>Did we find the right information?</p>
+<p>Metrics include:</p>
+<ul>
+  <li>Recall@K</li>
+  <li>Precision@K</li>
+  <li>MRR</li>
+  <li>nDCG</li>
+  <li>retrieval latency</li>
+</ul>
 
-  <p><strong>Improving Precision is a different problem.</strong> Precision improves when the retrieved set contains fewer irrelevant passages — requiring either a better embedding model that understands domain vocabulary, or a more aggressive reranker that filters rather than reorders. BGE-large-en-v1.5, a 1024-dimension model we tested as an alternative to the default 384-dimension model, showed recall-focused rather than precision-focused gains. Precision optimisation remains an open problem in this study.</p>
+<h3>2. Generation</h3>
+<p>Did the LLM actually use the retrieved information correctly?</p>
+<p>Now we care about:</p>
+<ul>
+  <li>Faithfulness</li>
+  <li>Answer relevance</li>
+  <li>Citation accuracy</li>
+  <li>Hallucination</li>
+  <li>Context utilisation</li>
+</ul>
 
-  <hr class="section-rule">
+<h3>3. Operations</h3>
+<p>And then there is everything around the model:</p>
+<ul>
+  <li>What happens when documents change?</li>
+  <li>What happens when legislation is amended?</li>
+  <li>What happens when users ask new types of questions?</li>
+  <li>How do we detect a regression?</li>
+  <li>How do we know whether a new embedding model is actually better?</li>
+  <li>How do we evaluate a new chunking strategy?</li>
+  <li>How much does every query cost?</li>
+  <li>How do we monitor quality after deployment?</li>
+</ul>
+<p>This is where <strong>RAGOps</strong> starts to matter.</p>
 
-  <h2>RAGOps: Evaluation as Engineering Practice</h2>
+<h2>Production RAG Is a Moving Target</h2>
+<p>Imagine your RAG system goes live today.</p>
+<p>Six months later:</p>
+<ul>
+  <li>A document changes.</li>
+  <li>A new regulation is introduced.</li>
+  <li>Users start asking different questions.</li>
+  <li>You change the embedding model.</li>
+  <li>You change the chunking strategy.</li>
+  <li>You add query expansion.</li>
+  <li>You introduce reranking.</li>
+  <li>You change the LLM.</li>
+</ul>
+<p>The system is no longer the same system you originally tested.</p>
+<p>And yet, without a repeatable evaluation process, you may still be reporting the original PoC accuracy number.</p>
+<p>That number is now almost meaningless.</p>
+<p>This is why RAG evaluation cannot be a one-off activity.</p>
+<p>It needs to become part of the engineering lifecycle.</p>
 
-  <p>DevOps exists because shipping software without continuous integration and deployment discipline leads to a slow accumulation of invisible failures. The same principle applies to RAG systems — and the analogy is more precise than it might seem.</p>
+<h2>From RAG Evaluation to RAGOps</h2>
+<p>This leads to the main conclusion of the study.</p>
+<p><strong>RAGOps is not simply monitoring whether the application is up.</strong></p>
+<p>It is the discipline of continuously asking:</p>
+<blockquote><strong>Is the system still retrieving the right information for the questions our users are asking?</strong></blockquote>
+<p>A production RAG pipeline should therefore have a repeatable evaluation loop:</p>
+<pre><code>                 ┌─────────────────┐
+                 │  Golden Dataset  │
+                 └────────┬────────┘
+                          ↓
+                 ┌─────────────────┐
+                 │ Retrieval Eval  │
+                 │ Recall /        │
+                 │ Precision / K   │
+                 └────────┬────────┘
+                          ↓
+                 ┌─────────────────┐
+                 │ Generation Eval │
+                 │ Faithfulness /  │
+                 │ Answer Quality  │
+                 └────────┬────────┘
+                          ↓
+                 ┌─────────────────┐
+                 │  Deploy / Tune  │
+                 └────────┬────────┘
+                          ↓
+                 ┌─────────────────┐
+                 │ Production Data │
+                 └────────┬────────┘
+                          │
+                          └──────→ Update Golden Set</code></pre>
+<p>The benchmark becomes part of the product.</p>
+<p>The evaluation pipeline becomes part of the deployment process.</p>
+<p>And accuracy becomes something you continuously manage rather than something you demonstrate once.</p>
 
-  <p>A RAG system operates against a data source: legislation, policy documents, product manuals. That data source changes. New regulations are enacted. Existing sections are amended. Penalty provisions are updated. If your retrieval system is not re-evaluated against each material change to the source, you are flying blind.</p>
+<h2>The Bigger Lesson</h2>
+<p>A RAG PoC answers:</p>
+<blockquote><strong>"Can we make this work?"</strong></blockquote>
+<p>Production requires answering a much harder set of questions:</p>
+<blockquote><strong>"How often does it work?"</strong></blockquote>
+<blockquote><strong>"When does it fail?"</strong></blockquote>
+<blockquote><strong>"Can we detect the failure?"</strong></blockquote>
+<blockquote><strong>"Can we reproduce it?"</strong></blockquote>
+<blockquote><strong>"Can we measure whether a change actually improved it?"</strong></blockquote>
+<blockquote><strong>"What happens when the data and user behaviour change?"</strong></blockquote>
+<p>That is the gap between a RAG demo and a production RAG system.</p>
+<p>My study started with a simple question:</p>
+<blockquote><strong>How good is the retrieval?</strong></blockquote>
+<p>It ended with a broader conclusion:</p>
+<blockquote><strong>The hard part of production RAG is not getting an LLM to answer questions from documents. The hard part is building an engineering system that can continuously prove that the answers are grounded in the right information.</strong></blockquote>
+<p>That is the problem RAGOps is ultimately trying to solve.</p>
 
-  <p>Beyond data changes: query patterns change. The questions real users ask evolve as they discover the system, as it is deployed to new teams, as edge cases emerge. An evaluation benchmark that captured the query distribution at launch is stale within months.</p>
+<div class="divider"></div>
 
-  <p>And the system itself changes. Every improvement to the retrieval pipeline — chunking strategy, routing rules, reranking — must be evaluated end-to-end before deployment. A change that improves Recall@5 by 2% might degrade Recall@20 by 5%. Without a benchmark, you cannot see this.</p>
+<h2>The Study at a Glance</h2>
+<table>
+  <thead>
+    <tr><th>Stage</th><th>What it represents</th><th>Recall@5</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>PoC / Golden Set</td><td>Small, clean, manually designed questions</td><td>88.1% Recall@3</td></tr>
+    <tr><td>Phase 2</td><td>Broader, more realistic benchmark</td><td>75.0%</td></tr>
+    <tr><td>Phase 3</td><td>Chunking + parent-child + routing + HyDE</td><td>75.3%</td></tr>
+    <tr><td>Phase 4</td><td>LLM reranking</td><td>80.2%</td></tr>
+  </tbody>
+</table>
 
-  <div class="callout">
-    <p><strong>RAGOps</strong> is the practice of maintaining an evaluation pipeline as a first-class engineering discipline — running it before every deployment, and treating accuracy regressions with the same urgency as performance regressions. It is not a one-time activity. It is ongoing, like DevOps, because the data, the queries, and the system all keep changing.</p>
-  </div>
+<p><strong>15 retrieval experiments.</strong></p>
+<p><strong>79-question benchmark.</strong></p>
+<p><strong>One important lesson:</strong></p>
+<blockquote><strong>A good-looking PoC is the beginning of the RAG journey — not the end.</strong></blockquote>
 
-  <p>The evaluation process is not free. Running Grounded-79 with LLM-assisted reranking costs real API tokens per benchmark run. For systems with hundreds of benchmark queries and multiple LLM calls per query, evaluation at scale is itself a budget line item.</p>
+<footer>
+  RAGOps Study · From RAG PoC to Production
+</footer>
 
-  <hr class="section-rule">
-
-  <h2>This Is Just the Retrieval Layer</h2>
-
-  <p>The four phases above measured only one layer of a production AI system. A complete RAG pipeline has at least three cost and quality surfaces:</p>
-
-  <h3>Retrieval</h3>
-  <p>Recall@K, Precision@K, chunking, embedding, reranking. This is where most of the RAG-specific engineering lives, and where this study focused. Even after eight months and 15 experimental variants, the best system still gets 20% of queries wrong at the retrieval stage.</p>
-
-  <h3>Generation</h3>
-  <p>Once relevant passages are retrieved, an LLM generates the final answer. Generation quality depends on prompt engineering, context window management, and the quality of what was retrieved. A retrieval system at R@5 = 0.80 means 20% of queries hand the generator the wrong context — and LLMs are reliably good at producing confident, fluent, wrong answers from bad context.</p>
-
-  <h3>Orchestration and Agents</h3>
-  <p>For systems that need multi-step reasoning, cross-referencing, or action-taking based on retrieved content, you are now in agent territory. Reliability degrades multiplicatively: a 90%-reliable step repeated five times gives 59% end-to-end reliability. Agent orchestration adds its own evaluation surface — and its own failure modes — that compound the retrieval and generation challenges.</p>
-
-  <p>There is currently no mature FinOps model for AI systems that includes all three layers together. You can estimate per-query LLM costs. You cannot reliably predict how query volume, benchmark evaluation cadence, reranking iterations, and agent loop expansion will compound over a fiscal year. The industry is early on cost modelling for production AI systems, and anyone presenting a confident 12-month cost projection for a full RAG-plus-generation-plus-agent pipeline should be pressed hard on the assumptions.</p>
-
-  <hr class="section-rule">
-
-  <h2>The Honest Conclusion</h2>
-
-  <p>A RAG proof of concept proves that the technology can work. It says nothing about whether it will work reliably, consistently, and at acceptable quality for production users.</p>
-
-  <p>Moving from <span class="metric">R@5 = 0.750</span> to <span class="metric">R@5 = 0.802</span> — across four phases, 15 experimental variants, and months of evaluation work — is the kind of investment a PoC timeline has no room for and most business cases never mention.</p>
-
-  <p>The implication is not that RAG is too hard. The implication is that organisations should plan for RAGOps as an ongoing engineering practice, budget for it explicitly, and resist the pressure to treat "the demo worked" as a production milestone.</p>
-
-  <p>The systems that will work in production are the ones with evaluation pipelines, benchmark datasets, and teams that treat accuracy regressions as bugs. That is not a research problem. It is an engineering culture problem — and the sooner we name it clearly, the sooner we can build AI systems that hold up under real conditions.</p>
-
-  <div class="closing">
-    <p>Study: NSW Health Services Act 1997 · Grounded-79 benchmark · 4 phases · 15 retrieval variants<br>
-    Data source: <a href="https://legislation.nsw.gov.au/view/html/inforce/current/act-1997-154">legislation.nsw.gov.au</a> · Evaluation dashboard: <a href="https://wangalv.github.io/RAGOps_demo01/">wangalv.github.io/RAGOps_demo01</a></p>
-  </div>
-</article>
+</main>
+</body>
+</html>
