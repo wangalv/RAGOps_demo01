@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAGOps — NSW Health Services Act Experiment Journey</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#f8f9fa;--card:#ffffff;--border:#e2e8f0;--text:#1a202c;--muted:#64748b;
+  --accent:#3b82f6;--green:#22c55e;--red:#ef4444;--orange:#f97316;--purple:#a855f7;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#0f172a;--card:#1e293b;--border:#334155;--text:#f1f5f9;--muted:#94a3b8;}
+}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;
+     padding:0 20px 40px;max-width:860px;margin:0 auto;}
+
+.site-header{padding:28px 0 20px;border-bottom:1px solid var(--border);margin-bottom:6px;}
+.site-header h1{font-size:20px;font-weight:800;letter-spacing:-.01em;}
+.site-header p{font-size:12px;color:var(--muted);margin-top:4px;}
+
+.hdr{margin:20px 0 6px;}
+.hdr-title{font-size:15px;font-weight:700;}
+.hdr-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+
+.flow{display:flex;align-items:center;flex-wrap:wrap;gap:0;margin:12px 0 14px;}
+.fn{background:var(--card);border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;min-width:80px;text-align:center;}
+.fn .num{font-size:18px;font-weight:800;}
+.fn .lbl{font-size:10px;color:var(--muted);line-height:1.35;margin-top:1px;}
+.fn-fil{border-color:#f97316;}
+.fn-keep{border-color:#22c55e;}
+.fa{font-size:14px;color:var(--muted);padding:0 5px;}
+.ftag{display:inline-block;font-size:9px;padding:1px 5px;border-radius:6px;color:#fff;margin-top:3px;}
+.bg-o{background:#f97316;}.bg-g{background:#22c55e;}.bg-b{background:#3b82f6;}
+
+.pt{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;
+    margin:14px 0 5px;padding-bottom:3px;border-bottom:1px solid var(--border);}
+
+.er-wrap{border:1px solid var(--border);border-radius:6px;margin-bottom:4px;overflow:hidden;}
+.er-wrap.open-wrap{border-color:var(--accent);}
+.er{background:var(--card);border:none;padding:6px 10px;display:flex;align-items:center;gap:6px;cursor:pointer;transition:background .15s;}
+.er:hover{background:color-mix(in srgb,var(--card) 94%,var(--accent) 6%);}
+.er.hl{background:color-mix(in srgb,var(--card) 94%,#22c55e 6%);}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.ename{font-size:11px;font-weight:600;flex:1 1 140px;}
+.bwrap{flex:2 1 160px;display:flex;align-items:center;gap:5px;}
+.bbg{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+.bbar{height:100%;border-radius:3px;width:0%;transition:width .7s ease;}
+.sc-wrap{display:flex;flex-direction:column;align-items:flex-end;min-width:52px;}
+.sc{font-size:11px;font-weight:700;}
+.sc-meta{font-size:9px;color:var(--muted);white-space:nowrap;margin-top:1px;}
+.bdgs{display:flex;gap:3px;flex-shrink:0;}
+.bg{font-size:9px;padding:1px 5px;border-radius:6px;color:#fff;white-space:nowrap;}
+.t-best{background:#22c55e;}.t-worse{background:#ef4444;}
+.t-base{background:#94a3b8;}.t-break{background:#a855f7;}.t-new{background:#ec4899;}
+.llm-0{background:#e2e8f0;color:#475569;font-size:9px;padding:1px 5px;border-radius:6px;}
+.llm-1{background:#bfdbfe;color:#1d4ed8;font-size:9px;padding:1px 5px;border-radius:6px;}
+.llm-2{background:#fde68a;color:#92400e;font-size:9px;padding:1px 5px;border-radius:6px;}
+@media(prefers-color-scheme:dark){
+  .llm-0{background:#334155;color:#94a3b8;}
+  .llm-1{background:#1e3a5f;color:#93c5fd;}
+  .llm-2{background:#3d2b00;color:#fcd34d;}
+}
+
+.leg{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px;}
+.li{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);}
+.ld{width:16px;height:11px;border-radius:3px;}
+
+.ics{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 4px;}
+.ic{flex:1 1 90px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:8px 9px;}
+.icv{font-size:15px;font-weight:800;color:var(--accent);}
+.icv.new{color:#22c55e;}
+.icl{font-size:10px;color:var(--muted);margin-top:1px;line-height:1.35;}
+
+.exp-panel{display:none;border-top:1px solid var(--border);padding:12px 14px 14px 14px;font-size:12px;line-height:1.7;}
+.exp-panel.open{display:block;}
+.exp-section{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 6px;}
+.exp-section:first-child{margin-top:0;}
+
+/* numbered steps */
+.steps{display:flex;flex-direction:column;gap:8px;}
+.step{display:flex;gap:10px;align-items:flex-start;}
+.step-num{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;
+          font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.step-body{flex:1;padding-top:2px;}
+.step-title{font-weight:700;margin-bottom:2px;}
+
+.why-row{display:flex;gap:8px;margin:4px 0;align-items:flex-start;}
+.why-icon{flex-shrink:0;width:16px;font-size:13px;}
+.chip{display:inline-block;font-size:9px;padding:1px 6px;border-radius:8px;background:var(--border);color:var(--muted);margin:2px 2px 0 0;}
+.note{background:color-mix(in srgb,var(--border) 50%,transparent);border-radius:6px;padding:8px 10px;margin-top:8px;font-size:11px;color:var(--muted);}
+
+.footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);}
+
+/* ── PoC / Production badges ─────────────────────────── */
+.env-badge{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;
+           letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:4px;
+           vertical-align:middle;margin-left:6px;}
+.poc-badge{background:#fef3c7;color:#92400e;border:1px solid #fcd34d;}
+.prod-badge{background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;}
+@media(prefers-color-scheme:dark){
+  .poc-badge{background:#3d2b00;color:#fde68a;border-color:#78450a;}
+  .prod-badge{background:#064e3b;color:#6ee7b7;border-color:#065f46;}
+}
+
+/* ── Production boundary banner ──────────────────────── */
+.prod-boundary{display:flex;align-items:center;gap:10px;margin:20px 0 4px;}
+.prod-boundary-line{flex:1;height:1px;background:var(--border);}
+.prod-boundary-pill{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+                    background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;
+                    padding:3px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;}
+@media(prefers-color-scheme:dark){
+  .prod-boundary-pill{background:#064e3b;color:#6ee7b7;border-color:#065f46;}
+}
+
+/* ── metrics explainer ─────────────────────────────────── */
+.mex{background:var(--card);border:1px solid var(--border);border-radius:10px;margin:14px 0 6px;overflow:hidden;}
+.mex-toggle{width:100%;background:none;border:none;padding:10px 14px;display:flex;align-items:center;
+            justify-content:space-between;cursor:pointer;text-align:left;gap:8px;}
+.mex-toggle-label{font-size:13px;font-weight:700;}
+.mex-toggle-hint{font-size:11px;color:var(--muted);}
+.mex-chevron{font-size:11px;color:var(--muted);transition:transform .2s;flex-shrink:0;}
+.mex-body{display:none;padding:0 14px 16px;}
+.mex-body.open{display:block;}
+.mex-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:14px;}
+.mex-card{background:color-mix(in srgb,var(--card) 90%,var(--border) 10%);border:1px solid var(--border);
+          border-radius:8px;padding:10px 12px;}
+.mex-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--accent);margin-bottom:4px;}
+.mex-name{font-size:13px;font-weight:700;margin-bottom:5px;}
+.mex-def{font-size:12px;line-height:1.6;color:var(--muted);}
+.mex-q{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 6px;}
+.mex-example{background:color-mix(in srgb,var(--card) 90%,var(--border) 10%);border:1px solid var(--border);
+             border-radius:8px;padding:10px 12px;}
+.mex-qtext{font-size:12px;font-style:italic;margin-bottom:10px;}
+.result-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
+.res-box{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:58px;}
+.res-sq{width:48px;height:48px;border-radius:7px;display:flex;align-items:center;
+        justify-content:center;font-size:18px;font-weight:800;}
+.res-hit{background:#dcfce7;color:#16a34a;}
+.res-miss{background:#fee2e2;color:#dc2626;}
+.res-lbl{font-size:9px;color:var(--muted);text-align:center;line-height:1.3;}
+.mex-scores{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.mex-score-row{display:flex;align-items:baseline;gap:5px;}
+.mex-score-name{font-size:11px;font-weight:700;}
+.mex-score-eq{font-size:11px;color:var(--muted);}
+.mex-score-val{font-size:13px;font-weight:800;color:var(--accent);}
+.mex-note{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;}
+@media(prefers-color-scheme:dark){
+  .res-hit{background:#14532d;color:#4ade80;}
+  .res-miss{background:#450a0a;color:#f87171;}
+}
+</style>
+</head>
+<body>
+
+<div class="site-header">
+  <h1>RAGOps — RAG Recall Improvement</h1>
+  <p>NSW Health Services Act 1997 · Grounded-79 evaluation set · LangGraph Learning Project</p>
+</div>
+
+
+<!-- Data Source -->
+<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin:14px 0 6px;font-size:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+  <span style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);flex-shrink:0;">Data Source</span>
+  <span style="color:var(--muted);">NSW Health Services Act 1997 —</span>
+  <a href="https://legislation.nsw.gov.au/view/html/inforce/current/act-1997-154" target="_blank" rel="noopener"
+     style="color:var(--accent);word-break:break-all;">
+    legislation.nsw.gov.au/view/html/inforce/current/act-1997-154
+  </a>
+</div>
+
+<!-- old SVG removed -->
+
+<!-- Metrics explainer -->
+<div class="mex">
+  <button class="mex-toggle" onclick="toggleMex()">
+    <span class="mex-toggle-label">📖 What do the scores mean?</span>
+    <span class="mex-toggle-hint">Recall, Precision, and Top-K explained</span>
+    <span class="mex-chevron" id="mex-chev">▼</span>
+  </button>
+  <div class="mex-body" id="mex-body">
+
+    <div class="mex-grid">
+
+      <div class="mex-card">
+        <div class="mex-label">Top-K</div>
+        <div class="mex-name">How many results we return</div>
+        <div class="mex-def">
+          K is simply how many passages the system hands back to you (or passes to the next stage). <b>K=5</b> means the system picks its 5 best candidates. <b>K=10</b> means it picks 10.<br><br>
+          Bigger K = more chances to include the right answer, but more noise to sift through.
+        </div>
+      </div>
+
+      <div class="mex-card">
+        <div class="mex-label">Recall@K &nbsp;(R@K)</div>
+        <div class="mex-name">Did the answer make it into the results at all?</div>
+        <div class="mex-def">
+          For each question we know the correct Act passage. Recall@K asks: <b>is that passage anywhere in the top K?</b><br><br>
+          One point if yes, zero if no — averaged across all 79 queries.<br><br>
+          Think of it as: <em>"What fraction of users would find the answer if they read all K results?"</em>
+        </div>
+      </div>
+
+      <div class="mex-card">
+        <div class="mex-label">Precision@K &nbsp;(P@K)</div>
+        <div class="mex-name">How much of what we returned is actually useful?</div>
+        <div class="mex-def">
+          Of the K results returned, how many are genuinely relevant? Precision@5 = 0.20 means on average only 1 of the 5 results is correct — the rest are noise.<br><br>
+          Think of it as: <em>"What fraction of the returned results are worth reading?"</em>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="mex-q">Worked example — K = 5</div>
+    <div class="mex-example">
+      <div class="mex-qtext">Question: "What is the maximum penalty for a board member who fails to disclose a conflict of interest?"</div>
+      <div class="result-row">
+        <div class="res-box">
+          <div class="res-sq res-miss">✗</div>
+          <div class="res-lbl">Result 1<br>Wrong section</div>
+        </div>
+        <div class="res-box">
+          <div class="res-sq res-hit">✓</div>
+          <div class="res-lbl">Result 2<br>Correct answer</div>
+        </div>
+        <div class="res-box">
+          <div class="res-sq res-miss">✗</div>
+          <div class="res-lbl">Result 3<br>Off-topic</div>
+        </div>
+        <div class="res-box">
+          <div class="res-sq res-miss">✗</div>
+          <div class="res-lbl">Result 4<br>Related but wrong</div>
+        </div>
+        <div class="res-box">
+          <div class="res-sq res-miss">✗</div>
+          <div class="res-lbl">Result 5<br>Off-topic</div>
+        </div>
+      </div>
+      <div class="mex-scores">
+        <div class="mex-score-row">
+          <span class="mex-score-name">Recall@5</span>
+          <span class="mex-score-eq">=</span>
+          <span class="mex-score-val">1.0</span>
+          <span class="mex-score-eq">— the correct answer IS in the top 5 → this query counts as a hit</span>
+        </div>
+        <div class="mex-score-row">
+          <span class="mex-score-name">Precision@5</span>
+          <span class="mex-score-eq">=</span>
+          <span class="mex-score-val">0.20</span>
+          <span class="mex-score-eq">— only 1 of 5 results is correct (1 ÷ 5 = 0.20)</span>
+        </div>
+      </div>
+      <div class="mex-note">
+        <b>Why Recall is the main goal here:</b> This system feeds results into a second AI that reads them and generates an answer. If the correct answer never appears in the results at all, no downstream step can recover it. Getting the answer into the top-K pool (Recall) is therefore the critical hurdle — Precision matters secondarily.
+        <br><br>
+        <b>Why R@5 &lt; R@10 &lt; R@20:</b> A bigger pool has more chances to contain the right answer. R@5=0.75 vs R@20=0.878 does <em>not</em> mean the 20-result system is "smarter" — it just returns 4× more results, giving the correct answer more chances to sneak in.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="hdr">
+  <div class="hdr-title">Full Experiment Journey</div>
+  <div class="hdr-sub">Click any method to expand its explanation</div>
+</div>
+
+<div class="pt">Dataset Evolution</div>
+<div class="flow">
+  <div class="fn"><div class="num" style="color:#3b82f6">21</div><div class="lbl">Golden Set<br>hand-labelled</div><div><span class="ftag bg-b">Phase 1</span></div></div>
+  <div class="fa">→</div>
+  <div class="fn"><div class="num" style="color:#f97316">100</div><div class="lbl">LLM-generated<br>simulated queries</div></div>
+  <div class="fa">→</div>
+  <div class="fn fn-fil"><div class="num" style="color:#ef4444">−21</div><div class="lbl">No answer in Act<br>— removed</div><div><span class="ftag bg-o">filtered</span></div></div>
+  <div class="fa">→</div>
+  <div class="fn fn-keep"><div class="num" style="color:#22c55e">79</div><div class="lbl">Grounded-79<br>true eval set</div><div><span class="ftag bg-g">Phase 2–4</span></div></div>
+</div>
+
+<div class="leg">
+  <div class="li"><div class="ld llm-0"></div>0 LLM calls</div>
+  <div class="li"><div class="ld llm-1"></div>1 LLM call per query</div>
+  <div class="li"><div class="ld llm-2"></div>2 LLM calls per query</div>
+</div>
+
+<div class="ics">
+  <div class="ic"><div class="icv">0.881</div><div class="icl">R@3 Golden Set<br><span class="poc-badge">PoC demo</span></div></div>
+  <div class="ic"><div class="icv">0.750</div><div class="icl">R@5 true baseline<br><span class="prod-badge">Production</span></div></div>
+  <div class="ic"><div class="icv">0.753</div><div class="icl">First break<br>of 0.75 ceiling</div></div>
+  <div class="ic"><div class="icv new">0.802</div><div class="icl">🆕 New best<br>LLM Reranker</div></div>
+</div>
+
+<div class="pt">Phase 1 — Golden Set, 21 queries (R@3) <span class="poc-badge">⚑ PoC Demo</span></div>
+<div id="tl1"></div>
+
+<div class="prod-boundary">
+  <div class="prod-boundary-line"></div>
+  <div class="prod-boundary-pill">↓ Production reality begins here</div>
+  <div class="prod-boundary-line"></div>
+</div>
+
+<div class="pt">Phase 2 — Grounded-79, Establishing True Baseline (R@5) <span class="prod-badge">✦ Production</span></div>
+<div id="tl2"></div>
+<div class="pt">Phase 3 — Breaking the 0.75 Ceiling (R@5) <span class="prod-badge">✦ Production</span></div>
+<div id="tl3"></div>
+<div class="pt">Phase 4 — LLM Reranker · Current Best (R@5) <span class="prod-badge">✦ Production</span></div>
+<div id="tl4"></div>
+
+
+<div class="footer">
+  Built during LangGraph / RAG / Agent Evaluation learning — M7 RAG Recall module ·
+  <a href="https://github.com/wangalv/RAGOps_demo01" style="color:var(--accent);">github.com/wangalv/RAGOps_demo01</a>
+</div>
+
+<script>
+const methods = [
+
+// ── Phase 1 ──────────────────────────────────────────────────────────────────
+{
+  id:'hyde-r3', phase:'p1', name:'HyDE → Reranked@3', score:.881, color:'#3b82f6',
+  tag:'base', tagLbl:'Best@21', llm:1, hl:false, topK:3, precision:.294, precisionEst:true,
+  steps:[
+    {n:1, title:'Simulate what the answer looks like',
+     body:'An AI model reads your question and writes a short hypothetical answer — as if it were already in the Act. For example, for "How long is a board member\'s term?", it might generate a clause like "A board member holds office for a period of 3 years."'},
+    {n:2, title:'Search using the simulated answer',
+     body:'The system converts that simulated answer into a mathematical vector (a list of numbers that captures meaning) and finds the real Act passages that are mathematically closest to it. This works better than searching with the original question, because the simulated answer uses the same formal legal language as the Act.'},
+    {n:3, title:'Re-score and re-rank the top candidates',
+     body:'A second AI model (a cross-encoder) reads each retrieved passage side-by-side with the original question and gives a precise relevance score. The top 3 passages by that score are returned.'},
+  ],
+  why:[
+    {i:'✓',t:'Bridges the vocabulary gap — plain English questions find formal legal text because the simulated answer speaks the Act\'s language'},
+    {i:'✓',t:'Cross-encoder scoring is much more precise than simple keyword or similarity matching'},
+  ],
+  limits:'These 21 queries were hand-picked "easy" questions, so the 0.881 result is optimistic. The true production score on harder queries is significantly lower.',
+  chips:['simulated answer','vector search','cross-encoder','top-3'],
+},
+
+{
+  id:'dense-r3', phase:'p1', name:'Dense Search → Reranked@3', score:.870, color:'#3b82f6',
+  tag:null, llm:0, hl:false, topK:3, precision:.290, precisionEst:true,
+  steps:[
+    {n:1, title:'Convert the question into a meaning vector',
+     body:'The question is encoded into a vector — a compact numerical representation that captures its meaning. No AI generation is involved; this is a fast mathematical operation.'},
+    {n:2, title:'Find the nearest passages',
+     body:'The system searches through all ~550 Act passages and returns the ones whose vectors are closest to the question vector. "Closest" means similar in meaning, not necessarily matching in exact words.'},
+    {n:3, title:'Re-rank with a cross-encoder',
+     body:'The top candidates are re-scored by a model that reads the question and each passage together, and the best 3 are returned.'},
+  ],
+  why:[
+    {i:'✓',t:'No AI generation cost — fast and completely deterministic'},
+    {i:'✓',t:'Can find paraphrases: "licensing" retrieves "registration" passages even without shared keywords'},
+  ],
+  limits:'If the question uses vocabulary that never appears in the Act and has no semantic overlap, the search will fail — no AI to bridge the gap.',
+  chips:['vector search','cross-encoder','no AI generation'],
+},
+
+{
+  id:'stepback-r3', phase:'p1', name:'Step-Back → Reranked@3', score:.870, color:'#3b82f6',
+  tag:null, llm:1, hl:false, topK:3, precision:.290, precisionEst:true,
+  steps:[
+    {n:1, title:'Abstract the question to a broader topic',
+     body:'An AI model takes the specific question (e.g. "What is the penalty if a nurse fails to report?") and rephrases it as a broader legal topic (e.g. "mandatory reporting obligations and consequences for health practitioners").'},
+    {n:2, title:'Search with both versions',
+     body:'The system runs two separate searches — one with the original question and one with the broader topic — and combines the results, removing duplicates.'},
+    {n:3, title:'Re-rank and return the best 3',
+     body:'All combined results are re-scored by a cross-encoder and the top 3 are returned.'},
+  ],
+  why:[{i:'✓',t:'Useful when the original question is very specific — the abstract version casts a wider net and may catch relevant sections that the narrow question misses'}],
+  limits:'Adds an AI generation step with no benefit when the original question is already broad.',
+  chips:['query abstraction','dual search','cross-encoder'],
+},
+
+// ── Phase 2 ──────────────────────────────────────────────────────────────────
+{
+  id:'hyde-r5', phase:'p2', name:'HyDE → Reranked@5', score:.750, color:'#f97316',
+  tag:'base', tagLbl:'True baseline', llm:1, hl:false, topK:5, precision:.150, precisionEst:true,
+  steps:[
+    {n:1, title:'Same pipeline as Phase 1',
+     body:'Identical to HyDE→Reranked@3 — simulate a hypothetical answer, search with it, re-rank with a cross-encoder. The only difference: return the top 5 instead of top 3.'},
+    {n:2, title:'Evaluated on a harder, larger set',
+     body:'This run uses 79 queries instead of 21. The extra queries include harder types: penalty questions (where "fine" needs to match "penalty units"), prohibition questions (where "what is forbidden" must match "the officer must not"), and questions requiring multiple sections.'},
+  ],
+  why:[{i:'⚠',t:'The score drops from 0.881 to 0.750 because the 79-query set exposes real failure modes that the 21 easy questions never triggered'}],
+  limits:'This 0.750 score is the honest production baseline. All future methods are benchmarked against this.',
+  chips:['HyDE','cross-encoder','true baseline'],
+},
+
+{
+  id:'dense-r5', phase:'p2', name:'Dense Search → Reranked@5', score:.732, color:'#f97316',
+  tag:null, llm:0, hl:false, topK:5, precision:.146, precisionEst:true,
+  steps:[
+    {n:1, title:'Same pipeline as Phase 1, larger eval set',
+     body:'Standard vector search on the question, cross-encoder re-ranking, returning top 5. Evaluated on the full 79 grounded queries.'},
+  ],
+  why:[{i:'✓',t:'Reaches 0.732 with zero AI generation cost — a strong and cheap baseline'}],
+  limits:'Vocabulary mismatch remains a hard limit: "What is the fine?" cannot find a passage that says "guilty of an offence and liable to a penalty of 50 units" without AI bridging.',
+  chips:['vector search','cross-encoder','no AI generation'],
+},
+
+{
+  id:'routing', phase:'p2', name:'Query Routing', score:.720, color:'#f97316',
+  tag:null, llm:1, hl:false, topK:5, precision:.144, precisionEst:true,
+  steps:[
+    {n:1, title:'Classify the type of question',
+     body:'An AI model reads the question and assigns it to one of four categories: Penalty (asks about fines or offences), Prohibition (asks what is not allowed), Cross-Section (requires multiple parts of the Act), or General. Classification was 100% accurate across all 79 queries.'},
+    {n:2, title:'Route to a specialist retriever',
+     body:'Each category uses a different retrieval strategy — for example, Penalty questions use vocabulary expansion (translating "fine" to Act language), while Cross-Section questions generate multiple query variants.'},
+    {n:3, title:'Retrieve and return top 5',
+     body:'The specialist retriever runs its search and returns the top 5 passages.'},
+  ],
+  why:[
+    {i:'✓',t:'Perfect classification accuracy (100%)'},
+    {i:'✗',t:'The specialist retrievers for each category (vocabulary expansion, multi-query) turned out to be weaker individually than HyDE — so perfect routing into weaker retrievers still lost to a single strong baseline'},
+  ],
+  limits:'Routing is only as good as the downstream retriever. The bottleneck was retriever quality, not classification.',
+  chips:['query classification','category routing','specialist retrievers'],
+},
+
+{
+  id:'lqe', phase:'p2', name:'Legal Query Expansion', score:.710, color:'#f97316',
+  tag:null, llm:1, hl:false, topK:5, precision:.142, precisionEst:true,
+  steps:[
+    {n:1, title:'Rewrite the question using legal vocabulary',
+     body:'An AI model translates the user\'s plain-English question into legal phrasing from the Act. For example: "What is the fine for not reporting?" becomes "What is the maximum penalty in penalty units for failure to comply with mandatory reporting obligations?"'},
+    {n:2, title:'Search with both keyword matching and semantic search',
+     body:'The expanded query is used in a hybrid search that combines traditional keyword matching (BM25) with semantic vector search, then merges the results.'},
+    {n:3, title:'Re-rank and return top 5',
+     body:'Results are re-scored by a cross-encoder and the best 5 returned.'},
+  ],
+  why:[
+    {i:'✓',t:'Rescued 2 penalty queries where vocabulary mismatch was the sole cause of failure'},
+    {i:'✗',t:'Keyword matching introduced noise for most other queries — the expansion hurt more than it helped overall'},
+  ],
+  limits:'Only effective for queries that fail purely because of vocabulary — not structural problems like cross-section reasoning.',
+  chips:['query rewriting','legal vocabulary','hybrid search'],
+},
+
+{
+  id:'legalhyde', phase:'p2', name:'Legal HyDE v2', score:.451, color:'#ef4444',
+  tag:'worse', tagLbl:'Worst result', llm:1, hl:false, topK:5, precision:.090, precisionEst:true,
+  steps:[
+    {n:1, title:'Force the simulated answer to use Act vocabulary',
+     body:'A modified prompt instructs the AI to generate a hypothetical answer that must use exact NSW Act phrasing — terms like "penalty units", "governing board", "authorised officer", etc.'},
+    {n:2, title:'Search and re-rank as usual',
+     body:'The constrained hypothetical answer is embedded and searched against the Act, then re-ranked.'},
+  ],
+  why:[
+    {i:'✗',t:'Constraining vocabulary forced the AI to focus on word choice rather than topical relevance — the simulated answer drifted away from the actual topic of the question'},
+    {i:'✗',t:'Result: 0.451 — the worst score in the entire experiment, 30 points below the baseline'},
+  ],
+  limits:'You cannot simultaneously constrain vocabulary AND preserve topical relevance in a single prompt. The constraint dominated and destroyed search quality.',
+  chips:['HyDE','vocabulary constraint','failed experiment'],
+},
+
+// ── Phase 3 ──────────────────────────────────────────────────────────────────
+{
+  id:'subsecpc', phase:'p3', name:'Subsection-level Search → Reranked@5', score:.750, color:'#a855f7',
+  tag:null, llm:0, hl:false, topK:5, precision:.150, precisionEst:true,
+  steps:[
+    {n:1, title:'Chop the Act into smaller pieces',
+     body:'Instead of treating each section (e.g. Section 17) as one search unit, the Act is split into individual numbered clauses — each subsection like "(1)", "(2)", "(3)" becomes its own searchable chunk. This gives 1,169 finer pieces compared to the original 552 sections.'},
+    {n:2, title:'Go even finer: search at the sentence level',
+     body:'Each clause is further split into individual sentences (1,514 sentence-level chunks) for the actual vector search. Sentences are more focused and their embeddings carry less noise.'},
+    {n:3, title:'Retrieve the parent clause for each matched sentence',
+     body:'When a sentence matches the query, the system automatically fetches its parent clause (the full subsection it belongs to) — so the final result contains complete legal provisions, not isolated fragments.'},
+    {n:4, title:'Re-rank and return top 5',
+     body:'All retrieved parent clauses are re-scored by a cross-encoder against the original question. Top 5 are returned.'},
+  ],
+  why:[
+    {i:'✓',t:'Finer search units: a single clause embeds more precisely than an entire section, reducing noise'},
+    {i:'✓',t:'Matches HyDE (0.750) with zero AI generation cost'},
+  ],
+  limits:'Without any query rewriting, still fails on vocabulary-gap questions (e.g. "fine" vs "penalty units").',
+  chips:['clause-level chunks','sentence-level search','parent-child retrieval','no AI generation'],
+},
+
+{
+  id:'subsecrouted', phase:'p3', name:'Routed + Clause-level + Reranked@5', score:.753, color:'#a855f7',
+  tag:'break', tagLbl:'Breaks 0.75', llm:1, hl:false, topK:5, precision:.151, precisionEst:true,
+  steps:[
+    {n:1, title:'Classify the question type',
+     body:'An AI model decides which category the question falls into (Penalty, Prohibition, Cross-Section, or General). This determines which search strategy to use.'},
+    {n:2, title:'Apply a question-type-specific transformation',
+     body:'Each category gets a tailored treatment:<br>· <b>Penalty</b>: Expand vocabulary ("fine" → "maximum penalty in penalty units")<br>· <b>Prohibition</b>: Abstract the question to a broader topic to catch implicit prohibitions<br>· <b>Cross-Section</b>: Generate 3–4 query variations to cast a wider net<br>· <b>General</b>: Simulate a hypothetical Act clause (HyDE)'},
+    {n:3, title:'Search through clause-level chunks',
+     body:'The transformed query searches through the 1,514 sentence-level chunks. Results are expanded back to their parent subsection clauses for context.'},
+    {n:4, title:'Re-rank and return top 5',
+     body:'All retrieved clauses are re-scored by a cross-encoder against the original question. Top 5 are returned.'},
+  ],
+  why:[
+    {i:'✓',t:'Stacks three improvements at once: question-type routing + fine-grained search + parent-clause retrieval'},
+    {i:'✓',t:'First method to break the 0.75 ceiling — reached 0.753'},
+  ],
+  limits:'The AI routing step introduces some randomness — results vary slightly between runs (0.753–0.759).',
+  chips:['routing','clause-level','parent retrieval','cross-encoder','first >0.75'],
+},
+
+{
+  id:'bge-embed', phase:'p3', name:'Larger Embedding Model (BGE)', score:.741, color:'#a855f7',
+  tag:null, llm:1, hl:false, topK:5, precision:.148, precisionEst:true,
+  steps:[
+    {n:1, title:'Same routing and search pipeline',
+     body:'Same question-type routing and transformed search as above. The only change: a larger AI embedding model (BGE-large, 1024 dimensions vs the standard 384 dimensions) is used to convert passages into vectors.'},
+    {n:2, title:'Richer meaning representation',
+     body:'A larger embedding model captures more semantic nuance — subtler synonyms and legal phrasing distinctions are better represented in the higher-dimensional space.'},
+  ],
+  why:[{i:'✓',t:'+0.013 improvement over the standard embedding model alone (0.728 → 0.741)'}],
+  limits:'Not combined with the clause-level parent-child approach in this experiment, so it falls short of the full Routed+Clause-level method (0.753).',
+  chips:['BGE-large-en-v1.5','1024-dim vectors','larger embedding'],
+},
+
+{
+  id:'cascade', phase:'p3', name:'Two-Stage Re-ranking (MiniLM → BGE)', score:.728, color:'#ef4444',
+  tag:'worse', tagLbl:'Worse', llm:1, hl:false, topK:5, precision:.146, precisionEst:true,
+  steps:[
+    {n:1, title:'First stage: fast re-ranker narrows to top 10',
+     body:'A fast re-ranking model (MiniLM, trained on English web search data) scores all retrieved passages and keeps only the top 10.'},
+    {n:2, title:'Second stage: stronger re-ranker picks the final top 5',
+     body:'A larger, more powerful re-ranking model (BGE, trained on multilingual data) re-scores the top 10 and picks the final 5. The idea: use a cheap model to filter, then a powerful model to refine.'},
+  ],
+  why:[
+    {i:'✗',t:'The BGE re-ranker was trained primarily on Chinese and multilingual data — it underperforms on formal English legal text'},
+    {i:'✗',t:'MiniLM was trained on MS MARCO English search queries, which is a better match for this task. Adding BGE in the second stage overrides MiniLM\'s good rankings with worse ones'},
+  ],
+  limits:'Two-stage reranking only helps when the second model is stronger on the target domain. BGE was not.',
+  chips:['two-stage reranking','domain mismatch','MiniLM first','BGE second'],
+},
+
+{
+  id:'bge-rnk', phase:'p3', name:'BGE Re-ranker Only', score:.709, color:'#ef4444',
+  tag:'worse', tagLbl:'Worst in Phase 3', llm:1, hl:false, topK:5, precision:.142, precisionEst:true,
+  steps:[
+    {n:1, title:'Replace the re-ranker entirely with BGE',
+     body:'The standard MiniLM re-ranker is swapped out entirely. BGE-reranker-large becomes the sole model that scores each retrieved passage against the question.'},
+  ],
+  why:[
+    {i:'✗',t:'BGE re-ranker is optimised for multilingual (especially Chinese) tasks, not English legal retrieval'},
+    {i:'✗',t:'0.709 is the lowest score in Phase 3 — worse than using no AI generation at all (Dense 0.732)'},
+  ],
+  limits:'Model selection must match the domain and language. A bigger or "stronger" model on paper can be worse in practice if its training data doesn\'t match the task.',
+  chips:['BGE reranker','wrong domain','multilingual model'],
+},
+
+{
+  id:'rnk10', phase:'p3', name:'Routed + Clause-level → Top 10 returned', score:.797, color:'#22c55e',
+  tag:'best', tagLbl:'@10 pool', llm:1, hl:false, topK:10, precision:.080, precisionEst:true,
+  steps:[
+    {n:1, title:'Same full pipeline, but return 10 results instead of 5',
+     body:'Identical to the Routed+Clause-level method. Only the final output size changes: the cross-encoder keeps the top 10 instead of top 5.'},
+    {n:2, title:'Used as a diagnostic ceiling',
+     body:'If the correct answer is somewhere in these 10 results, it means the retrieval found it — but the re-ranker may have put it outside position 1–5. R@5=0.797 means the answer is in the top-10 pool for nearly 80% of queries.'},
+  ],
+  why:[{i:'⚠',t:'This run reveals that the gap between 0.753 (top 5) and 0.797 (top 10) is a reranking problem, not a search problem. The answers exist in the pool — they just get ranked outside position 5.'}],
+  limits:'Returning 10 results to an end user is impractical. This run sets the target for Phase 4: can an AI reranker compress 10 results down to the right 5?',
+  chips:['top-10 pool','ceiling analysis','reranking gap revealed'],
+},
+
+{
+  id:'rnk20', phase:'p3', name:'Routed + Clause-level → Top 20 returned', score:.878, color:'#22c55e',
+  tag:'best', tagLbl:'@20 pool', llm:1, hl:false, topK:20, precision:.044, precisionEst:true,
+  steps:[
+    {n:1, title:'Same pipeline, return 20 results',
+     body:'The identical pipeline returns 20 results. Used only to understand how much recall is theoretically achievable with this retrieval approach.'},
+  ],
+  why:[{i:'⚠',t:'R@5=0.878 with 20 results confirms that almost all "lost" answers exist in the candidate pool — the problem is entirely in how results are ranked, not in whether they are found'}],
+  limits:'20 results is not a practical retrieval system. This is a diagnostic run only.',
+  chips:['top-20 pool','diagnostic only','confirms ranking gap'],
+},
+
+// ── Phase 4 ──────────────────────────────────────────────────────────────────
+{
+  id:'llmrnk', phase:'p4', name:'Routed + Clause-level + AI Re-ranking@5', score:.802, color:'#22c55e',
+  tag:'new', tagLbl:'New best', llm:2, hl:true, topK:5, precision:.203, precisionEst:false,
+  steps:[
+    {n:1, title:'Smart search with question-type routing',
+     body:'Same as the best Phase 3 method: classify the question type, apply a tailored query transformation, search through fine-grained clause-level chunks, and expand results to full subsection clauses. A cross-encoder then scores all results and keeps the top 10.'},
+    {n:2, title:'AI judge reads each candidate in depth',
+     body:'The 10 candidate passages are sent to an AI language model with a detailed 9-rule legal reasoning prompt. The model reads each passage carefully and assigns a score:<br>· <b>2 = Answer-bearing</b>: the passage directly contains the answer<br>· <b>1 = Supporting</b>: relevant context but not the direct answer<br>· <b>0 = Irrelevant</b>: does not help answer the question'},
+    {n:3, title:'9 rules prevent common legal retrieval traps',
+     body:'The prompt explicitly instructs the AI to:<br>· Ignore section title keyword matches (e.g. a section called "Prohibition of X" is not automatically relevant to "what is prohibited")<br>· Recognise legal synonyms ("fine" = "penalty units", "prohibited" = "must not")<br>· Prefer passages that directly state the answer over passages that merely discuss the topic<br>· Weight time-specific or penalty-specific provisions appropriately for those question types'},
+    {n:4, title:'Re-sort and return top 5',
+     body:'Passages are sorted by AI score (2s first, then 1s, then 0s). Equal-score ties are broken by the cross-encoder score from Step 1. The top 5 are returned.'},
+  ],
+  why:[
+    {i:'✓',t:'R@5=0.802 exceeds R@10=0.797 — the AI judge successfully compresses 10 candidates into a better top 5 than the cross-encoder alone could produce'},
+    {i:'✓',t:'Directly addresses all known failure modes identified in the diagnostic phase'},
+    {i:'⚠',t:'~10 of 79 queries received empty responses from the AI API and fell back to cross-encoder order'},
+  ],
+  limits:'Requires 2 AI generation calls per query (routing + re-ranking), making it slower and more expensive than simpler methods. The 0.802 score includes ~10 fallback queries.',
+  chips:['routing','clause-level','cross-encoder pre-filter','AI re-ranking','9-rule prompt','current best'],
+},
+
+]; // end methods
+
+const MAX = 0.92;
+const llmC = ['llm-0','llm-1','llm-2'];
+const llmL = ['0 LLM calls','1 LLM call','2 LLM calls'];
+
+function stepsHtml(steps) {
+  if (!steps || !steps.length) return '';
+  return `<div class="steps">${steps.map(s =>
+    `<div class="step">
+      <div class="step-num">${s.n}</div>
+      <div class="step-body">
+        <div class="step-title">${s.title}</div>
+        <div>${s.body}</div>
+      </div>
+    </div>`
+  ).join('')}</div>`;
+}
+
+function rowHtml(d) {
+  const pct = d.score ? Math.round(d.score/MAX*100) : 0;
+  const sc  = d.score ? d.score.toFixed(3) : '···';
+  const scC = d.tag==='worse' ? '#ef4444'
+            : (d.tag==='best'||d.tag==='break'||d.tag==='new') ? '#22c55e'
+            : 'var(--text)';
+  const resBadge = d.tag ? `<span class="bg t-${d.tag}">${d.tagLbl}</span>` : '';
+  const whyHtml = (d.why||[]).map(w =>
+    `<div class="why-row"><div class="why-icon">${w.i}</div><div>${w.t}</div></div>`
+  ).join('');
+  const chipHtml = (d.chips||[]).map(c => `<span class="chip">${c}</span>`).join('');
+
+  return `<div class="er-wrap" id="wrap-${d.id}">
+    <div class="er${d.hl?' hl':''}" onclick="toggle('${d.id}')">
+      <div class="dot" style="background:${d.color}"></div>
+      <div class="ename">${d.name}</div>
+      <div class="bwrap">
+        <div class="bbg"><div class="bbar" style="background:${d.color}" data-w="${pct}"></div></div>
+        <div class="sc-wrap">
+          <div class="sc" style="color:${scC}">${sc}</div>
+          <div class="sc-meta">K=${d.topK} · P${d.precisionEst?'≈':'='}${d.precision.toFixed(2)}</div>
+        </div>
+      </div>
+      <div class="bdgs"><span class="${llmC[d.llm]}">${llmL[d.llm]}</span>${resBadge}</div>
+    </div>
+    <div class="exp-panel" id="panel-${d.id}">
+      <div class="exp-section">How it works</div>
+      ${stepsHtml(d.steps)}
+      <div class="exp-section">Why it helps / hurts</div>
+      ${whyHtml}
+      <div class="exp-section">Limitations</div>
+      <div>${d.limits}</div>
+      <div class="exp-section">Tags</div>
+      <div>${chipHtml}</div>
+    </div>
+  </div>`;
+}
+
+function render(id, phase) {
+  document.getElementById(id).innerHTML =
+    methods.filter(m => m.phase === phase).map(rowHtml).join('');
+}
+render('tl1','p1'); render('tl2','p2'); render('tl3','p3'); render('tl4','p4');
+
+setTimeout(() => {
+  document.querySelectorAll('.bbar').forEach(b => { b.style.width = b.dataset.w + '%'; });
+}, 80);
+
+function toggle(id) {
+  document.getElementById('panel-'+id).classList.toggle('open');
+  document.getElementById('wrap-'+id).classList.toggle('open-wrap');
+}
+
+function toggleMex() {
+  const body = document.getElementById('mex-body');
+  const chev = document.getElementById('mex-chev');
+  body.classList.toggle('open');
+  chev.textContent = body.classList.contains('open') ? '▲' : '▼';
+}
+</script>
+</body>
+</html>
